@@ -1,0 +1,74 @@
+# Egne ord: slang, engelsk og steder. Ett ord per linje.
+# Valgfri lydform etter ordet, som i uttale.txt (| skiller varianter).
+# Ordene legges til i rimsøket og rangeres først. uttale.txt går foran.
+
+# Steder (Horten og omegn)
+horten
+hån
+havna
+bastø
+borre
+skoppum
+lystlunden
+karljohansvern
+åsgårdstrand
+tønsberg
+moss
+
+# Engelsk slang, norsk uttale
+cash kæsj
+flash flæsj
+stash stæsj
+splash splæsj
+smash smæsj
+dash dæsj
+flex fleks
+drip
+trap træp
+swag svæg
+hood hud
+plug plagg
+hype hæip
+fame fæim
+chill tsjill
+chille tsjille
+baller
+gang
+bro
+opp
+grind græind
+vibe væib
+
+# Norsk slang
+gutta
+væit
+flus
+jalla
+wallah
+skrr
+
+# Jobbsteder. Verktøyet kjenner dem, men de er ikke motiver i teksten.
+hammerfest
+melkøya
+
+# Norsk slang, verb
+vippse
+vippser
+vippsa
+vippset
+
+# Fra Brain-notatene
+nikko
+digimere
+duubie
+smuudie
+purple pørpel
+urple ørpel
+turtle tørtel
+tricks
+flower
+skills
+chills
+icebag æisbæg
+brain
+kirkhaug

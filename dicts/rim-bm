@@ -1,0 +1,1073 @@
+#!/usr/bin/env python3
+"""rim-bm — enderim for norsk bokmål (Norsk ordbank / Språkbanken, CC-BY 4.0).
+
+Bruk:
+  rim-bm kald                    rim på et ord (uttale, vanlige ord først)
+  rim-bm kald --stav 2           bare tostavelsesord
+  rim-bm tjener --skjevt         skjeve rim: samme trykkvokal og konsonanttype
+  rim-bm mynter --assonans       vokalklang (rap): samme vokaler fra trykket, med score
+  rim-bm --par kald skall vei    sjekk par til rimloggen (kald/skall, kald/vei)
+  rim-bm --par gata data         rent rim; multi når nøkkelen har to eller flere vokalkjerner
+  rim-bm --tekst låt.txt         rimpar, rimskjema, stavelser, multi, flerord og innrim
+  rim-bm --tekst låt.txt --sjekk låtsjekk: gjenbruk, gjentakelser, merker, hook, uttale
+  rim-bm --info gatene           lydform, trykk, nøkkel og stavelser for et ord
+  rim-bm kald --skrift           som v1: sammenlign stavemåte, ikke uttale
+
+Rimet regnes fra trykkvokalen og ut. Ordet gjøres om til lydform først
+(kald → kall, meg → mæi, her → hær), med regler i koden og unntak i uttale.txt.
+Egne ord (slang, steder) legges til i egne-ord.txt og rangeres først.
+"""
+from __future__ import annotations
+
+import argparse
+import difflib
+import hashlib
+import json
+import os
+import pickle
+import re
+import sys
+import unicodedata
+import tempfile
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from functools import lru_cache
+from pathlib import Path
+
+VERSION = "2.5.0"
+
+
+# --------------------------------------------------------------------------- stier
+
+def _env_path(name: str, default: Path) -> Path:
+    v = os.environ.get(name)
+    return Path(v).expanduser() if v else default
+
+
+def _default_home() -> Path:
+    here = Path(__file__).resolve().parent
+    if (here / "norsk-ordbank-bm").is_dir():
+        return here
+    return Path.home() / "music-projects" / "dicts"
+
+
+HOME_DIR = _env_path("RIM_BM_HOME", _default_home())
+WORDLIST = _env_path("RIM_BM_WORDLIST", HOME_DIR / "norsk-ordbank-bm" / "former-utf8.txt")
+STANDARD = Path(__file__).resolve().parent / "uttale-standard.txt"
+UTTALE = _env_path("RIM_BM_UTTALE", HOME_DIR / "uttale.txt")
+EGNE = _env_path("RIM_BM_EGNE", HOME_DIR / "egne-ord.txt")
+_STUDIO = HOME_DIR.parent / "artists" / "Hoggorm" / "studio"
+FASIT = [Path(x).expanduser() for x in os.environ["RIM_BM_FASIT"].split(":") if x] \
+    if "RIM_BM_FASIT" in os.environ else [_STUDIO / "fornoyd", _STUDIO / "tekster"]
+FREKVENS = _env_path("RIM_BM_FREKVENS", HOME_DIR / "frekvens" / "no_50k.txt")
+CACHE_DIR = _env_path("RIM_BM_CACHE", _env_path("XDG_CACHE_HOME", Path.home() / ".cache") / "rim-bm")
+
+
+# --------------------------------------------------------------------------- lyd
+
+VOWELS = frozenset("aeiouyæøå")
+DIPHTHONGS = frozenset({"ei", "æi", "øy", "au", "ai", "ey", "oy"})
+ACCENTS = str.maketrans({
+    "è": "é", "ê": "é", "ó": "o", "ò": "o", "ô": "o",
+    "á": "a", "à": "a", "ü": "y", "ä": "æ", "ö": "ø",
+})
+NOT_LETTER = re.compile(r"[^a-zæøåé']")      # ord du skriver inn
+NOT_LYD = re.compile(r"[^a-zæøåé'.]")        # lydformer i uttalefila: punktum skiller kjerner
+
+INFL = r"(?:e|er|en|et|ene|a|es|ens|ers|ets)?$"
+RULES: list[tuple[str, re.Pattern[str], str]] = [
+    ("skj", re.compile(r"skj"), "sj"),
+    ("hj", re.compile(r"^hj"), "j"),
+    ("hv", re.compile(r"^hv"), "v"),
+    ("gj", re.compile(r"^gj"), "j"),
+    ("ldt", re.compile(r"ldt$"), "lt"),
+    ("ld", re.compile(r"ld(?=" + INFL + ")"), "ll"),
+    ("ndt", re.compile(r"ndt$"), "nt"),
+    ("nd", re.compile(r"nd(?=" + INFL + ")"), "nn"),
+    ("rdt", re.compile(r"rdt$"), "rt"),
+    ("rd", re.compile(r"rd$"), "r"),
+    ("gt", re.compile(r"gt$"), "kt"),
+    ("dt", re.compile(r"dt$"), "tt"),
+    ("ei", re.compile(r"ei"), "æi"),
+    ("o", re.compile(r"o(?=pp|tt|kk|ss|ll|nn|ff|bb|gg|dd)"), "å"),
+]
+
+WEAK_E_FINAL = frozenset({"", "n", "r", "t", "s", "l", "st"})
+WEAK_E_INNER = frozenset({"n", "r", "t", "l", "st", "ls", "rn", "nd"})
+WEAK_I = frozenset({"ng", "ngs", "g", "gs", "gst", "sk", "skt"})
+HET = re.compile(r"h(?:et|eten|eter|etene|ets)$")
+HIATUS_SUFFIX = ("", "n", "r", "s", "ne", "en", "er", "et", "ns", "rs", "ene")
+NATIVE_PREFIX = re.compile(r"^(be|for|av|gjen|om|over|under)")
+PREFIX = re.compile(r"^(be|ge|for)(?=[^aeiouyæøå])")
+ERE = re.compile(
+    r"^(?P<stem>.*[^aeiouyæøå])(?P<suf>ere|erer|eres|erte|ertes|ert|ering|eringa|eringen|eringer|eringene|erende)$"
+)
+STRESSED_END = [re.compile(r"it(?P<v>e)t(?:en|er|ene|s)?$")]
+
+
+def nuclei(s: str) -> list[tuple[int, int]]:
+    """Vokalkjerner som (start, slutt). Diftonger og strekte vokaler er én kjerne."""
+    out: list[tuple[int, int]] = []
+    i, n = 0, len(s)
+    while i < n:
+        if s[i] not in VOWELS:
+            i += 1
+            continue
+        j = i + 1
+        if j < n and s[i:j + 1] in DIPHTHONGS:
+            j += 1
+        elif s[i] != "e":
+            while j < n and s[j] == s[i]:
+                j += 1
+        out.append((i, j))
+        i = j
+    return out
+
+
+def clean(word: str) -> str:
+    w = unicodedata.normalize("NFC", word).lower().translate(ACCENTS)
+    return NOT_LETTER.sub("", w)
+
+
+def clean_lyd(value: str) -> str:
+    w = unicodedata.normalize("NFC", value).lower().translate(ACCENTS)
+    return NOT_LYD.sub("", w)
+
+
+def load_uttale(path: Path) -> dict[str, str]:
+    exc: dict[str, str] = {}
+    if not path.is_file():
+        return exc
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) >= 2:
+            exc[clean(parts[0]).replace("'", "")] = "|".join(clean_lyd(v.strip()) for v in parts[1].split("|") if v.strip())
+    return exc
+
+
+def lydform(word: str, exc: dict[str, str], skrift: bool = False) -> str:
+    """Lydform med ' foran trykkvokalen når trykket er kjent."""
+    w = clean(word)
+    plain = w.replace("'", "")
+    if not skrift and plain in exc:
+        return exc[plain].split("|")[0]
+    if "é" in w:
+        k = w.rfind("é")
+        w = w[:k] + "'e" + w[k + 1:]
+        w = w.replace("é", "e")
+    if skrift:
+        return w
+    skip_nd = w.endswith(("ende", "endes")) and len(nuclei(w)) >= 3
+    for name, rx, rep in RULES:
+        if skip_nd and name == "nd":
+            continue
+        w = rx.sub(rep, w)
+    return w
+
+
+def _hiatus_word(w: str, wordset) -> bool:
+    """Ord som familie, studio og video, med eller uten bøyningsendelse."""
+    for suf in HIATUS_SUFFIX:
+        if suf and not w.endswith(suf):
+            continue
+        base = w[: -len(suf)] if suf else w
+        if base.endswith(("ie", "io", "eo")) and (not suf or base in wordset):
+            return True
+    return False
+
+
+def _is_weak(lf: str, nuc: list[tuple[int, int]], i: int, genitive: bool,
+             het: int = -1, hiatus: bool = False) -> bool:
+    s, e = nuc[i]
+    v = lf[s:e]
+    final = i == len(nuc) - 1
+    coda = lf[e:] if final else lf[e:nuc[i + 1][0]]
+    if final and genitive and coda.endswith("s"):
+        coda = coda[:-1]
+    # -het: h-en hører til suffikset, ikke til stavelsen foran (mulighet, sikkerhet).
+    if not final and het >= 0 and nuc[i + 1][0] - 1 == het and coda.endswith("h"):
+        coda = coda[:-1]
+    # Hiatus i familie, studio, video: i/e rett foran trykklett e/o, og o etter i/e.
+    if hiatus and coda == "":
+        if v in ("i", "e") and not final and lf[nuc[i + 1][0]:nuc[i + 1][1]] in ("e", "o"):
+            return True
+        if v == "o" and s > 0 and lf[s - 1] in "ie":
+            return True
+    if v == "e":
+        return coda in (WEAK_E_FINAL if final else WEAK_E_INNER)
+    if v == "a":
+        return final and coda in ("", "s")
+    if v == "i":
+        return coda in WEAK_I
+    if v == "y":
+        return final and coda == "" and not NATIVE_PREFIX.match(lf)
+    if v == "o" and s > 0 and lf[s - 1] in "ds" and coda in ("m", "mt", "mm", "ms"):
+        return True
+    return False
+
+
+def stress(lf_marked: str, word: str, wordset: frozenset[str] | set[str]) -> tuple[str, list[tuple[int, int]], int]:
+    """Returnerer (lydform uten merke, kjerner, indeks for trykkstavelsen)."""
+    if "'" in lf_marked:
+        k = lf_marked.index("'")
+        lf = lf_marked.replace("'", "")
+        nuc = nuclei(lf)
+        for idx, (s, _) in enumerate(nuc):
+            if s >= k:
+                return lf, nuc, idx
+        return lf, nuc, max(len(nuc) - 1, 0)
+
+    lf = lf_marked
+    nuc = nuclei(lf)
+    n = len(nuc)
+    if n <= 1:
+        return lf, nuc, 0
+
+    for rx in STRESSED_END:
+        m = rx.search(lf)
+        if m:
+            for idx, (s, _) in enumerate(nuc):
+                if s == m.start("v"):
+                    return lf, nuc, idx
+
+    w = clean(word).replace("'", "")
+    m = ERE.match(w)
+    if m and any(c in VOWELS for c in m.group("stem")) and (m.group("stem") + "ert") in wordset \
+            and lf.endswith(m.group("suf")):
+        pos = len(lf) - len(m.group("suf"))
+        for idx, (s, _) in enumerate(nuc):
+            if s == pos:
+                return lf, nuc, idx
+
+    genitive = w.endswith("s") and not w.endswith("ss") and len(w) > 3 and w[:-1] in wordset
+    hm = HET.search(lf)
+    het = hm.start() if hm and hm.start() > 0 else -1
+    hiatus = _hiatus_word(w, wordset)
+    i = n - 1
+    while i > 0 and _is_weak(lf, nuc, i, genitive, het, hiatus):
+        i -= 1
+
+    if i == 0:
+        pm = PREFIX.match(lf)
+        if pm:
+            p = len(pm.group(1))
+            doubled = lf[p] == lf[p - 1] or (p + 1 < len(lf) and lf[p] == lf[p + 1])
+            if not doubled and len(nuclei(lf[p:])) >= 2:
+                i = 1
+    return lf, nuc, i
+
+
+@dataclass
+class Info:
+    ord: str
+    lyd: str
+    nokkel: str
+    stav: int
+    trykk: int  # 1-basert stavelse med trykk
+    metode: str = "heuristikk"
+    usikker: bool = True  # tekstbasert analyse, ikke verifisert lyd
+
+
+def analyse(word: str, exc: dict[str, str], wordset, skrift: bool = False, variant: str | None = None) -> Info:
+    marked = variant if variant is not None else lydform(word, exc, skrift)
+    metode = "skrift" if skrift else ("uttalefil" if clean(word) in exc else "heuristikk")
+    lf, nuc, i = stress(marked, word, wordset)
+    if not nuc:
+        return Info(word, lf.replace(".", ""), lf.replace(".", ""), 1 if lf else 0, 1, metode)
+    return Info(word, lf.replace(".", ""), lf[nuc[i][0]:].replace(".", ""), len(nuc), i + 1, metode)
+
+
+def skjevt_key(key: str) -> str:
+    """Trykkvokal + konsonanttype: N nasal, P plosiv, F frikativ, L for l, R for r."""
+    s = key.replace("ng", "ŋ").replace("nk", "ŋk")
+    s = re.sub(r"skj|sj|kj|tj|rs", "ʃ", s)
+    out: list[str] = []
+    for ch in s:
+        if ch in VOWELS:
+            c = ch
+        elif ch in "mnŋ":
+            c = "N"
+        elif ch in "ptkbdgcqx":
+            c = "P"
+        elif ch in "fvshʃjwz":
+            c = "F"
+        elif ch == "l":
+            c = "L"
+        elif ch == "r":
+            c = "R"
+        else:
+            c = "?"
+        if out and out[-1] == c and c.isupper():
+            continue
+        out.append(c)
+    return "".join(out)
+
+
+# Vokaler som ligger nær nok til å klinge sammen i rap.
+NEAR_VOWELS = frozenset(frozenset(p) for p in ("eæ", "oå", "ou", "yi", "øy"))
+ASSONANS_MIN = 0.65
+
+
+@lru_cache(maxsize=None)
+def _vokaler(key: str) -> tuple[str, ...]:
+    out = []
+    for s, e in nuclei(key):
+        v = key[s:e]
+        out.append(v if v in DIPHTHONGS else v[0])
+    return tuple(out)
+
+
+@lru_cache(maxsize=None)
+def _konsonanter(key: str) -> str:
+    return "".join(c for c in skjevt_key(key) if c.isupper())
+
+
+def _vokal_score(a: str, b: str) -> float:
+    if a == b:
+        return 1.0
+    return 0.5 if frozenset((a, b)) in NEAR_VOWELS else 0.0
+
+
+@lru_cache(maxsize=None)
+def assonans(ka: str, kb: str) -> float:
+    """Vokalklang fra trykkvokalen og ut, 0–1. Trykkvokalen teller dobbelt; konsonanttype 40 %."""
+    va, vb = _vokaler(ka), _vokaler(kb)
+    if not va or not vb or _vokal_score(va[0], vb[0]) == 0:
+        return 0.0
+    total = denom = 0.0
+    for i in range(max(len(va), len(vb))):
+        w = 2.0 if i == 0 else 1.0
+        denom += w
+        if i < len(va) and i < len(vb):
+            total += w * _vokal_score(va[i], vb[i])
+    ca, cb = _konsonanter(ka), _konsonanter(kb)
+    cons = difflib.SequenceMatcher(None, ca, cb).ratio() if (ca or cb) else 1.0
+    return round(0.6 * total / denom + 0.4 * cons, 2)
+
+
+def assonans_grad(score: float) -> str | None:
+    if score >= 0.85:
+        return "sterk"
+    if score >= ASSONANS_MIN:
+        return "middels"
+    if score >= 0.5:
+        return "svak"
+    return None
+
+
+def load_egne(path: Path) -> tuple[set[str], dict[str, str]]:
+    """egne-ord.txt: ett ord per linje, eventuelt fulgt av lydform som i uttale.txt."""
+    words: set[str] = set()
+    exc: dict[str, str] = {}
+    if not path.is_file():
+        return words, exc
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split(maxsplit=1)
+        w = clean(parts[0]).replace("'", "")
+        if not w:
+            continue
+        words.add(w)
+        if len(parts) == 2:
+            exc[w] = "|".join(clean_lyd(v.strip()) for v in parts[1].split("|") if v.strip())
+    return words, exc
+
+
+# --------------------------------------------------------------------------- data
+
+CACHE_KEEP = 3
+TMP_MAX_AGE = 3600
+
+
+def prune_cache(cache_dir: Path, mode: str, keep: int = CACHE_KEEP) -> None:
+    """Behold de sist brukte indeksene per modus. Gamle oppstår hver gang uttale.txt endres."""
+    import time
+    try:
+        files = sorted(cache_dir.glob(f"indeks-{mode}-*.pkl"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in files[keep:]:
+            old.unlink(missing_ok=True)
+        cutoff = time.time() - TMP_MAX_AGE
+        for tmp in cache_dir.glob("indeks-*.tmp"):
+            if tmp.stat().st_mtime < cutoff:
+                tmp.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+class Data:
+    def __init__(self, wordlist: Path, uttale: Path, frekvens: Path, skrift: bool, use_cache: bool = True,
+                 egne: Path | None = None):
+        if not wordlist.is_file():
+            raise FileNotFoundError(str(wordlist))
+        self.wordlist, self.uttale_path, self.skrift = wordlist, uttale, skrift
+        self.egne_path = egne if egne is not None else EGNE
+        self.egne, egne_exc = load_egne(self.egne_path)
+        self.exc = {} if skrift else {**load_uttale(STANDARD), **egne_exc, **load_uttale(uttale)}
+        self.freq = self._load_freq(frekvens)
+        for w in self.egne:
+            self.freq[w] = -1  # egne ord først, og de teller som vanlige
+        self.index, self.wordset = self._load_index(use_cache)
+        self._skjevt: dict[str, list[str]] | None = None
+
+    @staticmethod
+    def _load_freq(path: Path) -> dict[str, int]:
+        freq: dict[str, int] = {}
+        if path.is_file():
+            for rank, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
+                w = line.split(" ", 1)[0].strip().lower()
+                if w and w not in freq:
+                    freq[w] = rank
+        return freq
+
+    def _signature(self) -> str:
+        parts = [VERSION, "skrift" if self.skrift else "uttale", str(self.wordlist)]
+        for p in (self.wordlist, STANDARD, self.uttale_path, self.egne_path):
+            st = p.stat() if p.is_file() else None
+            parts.append(f"{p}:{st.st_mtime_ns}:{st.st_size}" if st else f"{p}:-")
+        return hashlib.sha1("|".join(parts).encode()).hexdigest()[:16]
+
+    def _load_index(self, use_cache: bool):
+        mode = "skrift" if self.skrift else "uttale"
+        cache = CACHE_DIR / f"indeks-{mode}-{self._signature()}.pkl"
+        if use_cache and cache.is_file():
+            try:
+                with cache.open("rb") as f:
+                    result = pickle.load(f)
+                try:
+                    os.utime(cache)  # merk som nylig brukt, så den ikke ryddes bort
+                except OSError:
+                    pass
+                return result
+            except Exception:
+                pass
+        words = sorted({unicodedata.normalize("NFC", ln.strip()).lower() for ln in self.wordlist.read_text(encoding="utf-8").splitlines() if ln.strip()} | self.egne)
+        wordset = frozenset(words)
+        index: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        for w in words:
+            variants = self.exc.get(w, "").split("|") if w in self.exc else [None]
+            entries = set()
+            for variant in variants:
+                info = analyse(w, self.exc, wordset, self.skrift, variant)
+                entries.add((info.nokkel, info.stav))
+            for key, count in sorted(entries):
+                index[key].append((w, count))
+        result = (dict(index), wordset)
+        if use_cache:
+            try:
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                fd, name = tempfile.mkstemp(prefix=cache.stem + "-", suffix=".tmp", dir=CACHE_DIR)
+                os.close(fd)
+                tmp = Path(name)
+                with tmp.open("wb") as f:
+                    pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+                tmp.replace(cache)
+                prune_cache(CACHE_DIR, mode)
+            except OSError:
+                pass
+        return result
+
+    def info(self, word: str, skrift: bool | None = None) -> Info:
+        return analyse(word, {} if (skrift if skrift is not None else self.skrift) else self.exc,
+                       self.wordset, self.skrift if skrift is None else skrift)
+
+    def infos(self, word: str) -> list[Info]:
+        variants = self.exc.get(clean(word), "").split("|") if clean(word) in self.exc else [None]
+        return [analyse(word, self.exc, self.wordset, self.skrift, v) for v in variants]
+
+    def skjevt_keys(self, key: str) -> list[str]:
+        if self._skjevt is None:
+            m: dict[str, list[str]] = defaultdict(list)
+            for k in self.index:
+                m[skjevt_key(k)].append(k)
+            self._skjevt = m
+        return self._skjevt.get(skjevt_key(key), [])
+
+    def is_self_compound(self, w: str, q: str) -> bool:
+        if len(q) < 3 or w == q or not w.endswith(q):
+            return False
+        pre = w[: -len(q)]
+        return pre in self.wordset or (len(pre) > 2 and pre[-1] in "se" and pre[:-1] in self.wordset)
+
+    def rhymes(self, query: str, *, stav=None, limit=40, skjevt=False, filt=True, vanlige=False, assonans=False):
+        qi = self.info(query)
+        q = clean(query).replace("'", "")
+        own_keys = {v.nokkel for v in self.infos(query)}
+        score: dict[str, float] = {}
+        if assonans:
+            for k in self.index:
+                if k not in own_keys:
+                    best = max(globals()["assonans"](o, k) for o in own_keys)
+                    if best >= ASSONANS_MIN:
+                        score[k] = best
+            keys = sorted(score)
+        elif skjevt:
+            keys = sorted({k for key in own_keys for k in self.skjevt_keys(key)})
+        else:
+            keys = sorted(own_keys)
+        word_score: dict[str, float] = {}
+        seen: set[str] = set()
+        groups: dict[int, list[str]] = defaultdict(list)
+        for k in keys:
+            for w, s in self.index.get(k, []):
+                if w == q or w in seen:
+                    continue
+                if skjevt and k in own_keys:
+                    continue
+                if filt and self.is_self_compound(w, q):
+                    continue
+                if vanlige and w not in self.freq:
+                    continue
+                if stav is not None and s != stav:
+                    continue
+                seen.add(w)
+                groups[s].append(w)
+                word_score[w] = score.get(k, 1.0)
+        inf = len(self.freq) + 1
+        out = {}
+        for s in sorted(groups):
+            ws = sorted(groups[s], key=lambda x: (-word_score[x], self.freq.get(x, inf), len(x), x))
+            out[s] = ws[:limit]
+        return qi, out
+
+
+# --------------------------------------------------------------------------- --par
+
+def check_pair(data: Data, a: str, b: str) -> dict:
+    va, vb = data.infos(a), data.infos(b)
+    combos = [(x, y) for x in va for y in vb]
+    exact = [(x, y) for x, y in combos if x.nokkel == y.nokkel]
+    near = [(x, y) for x, y in combos if skjevt_key(x.nokkel) == skjevt_key(y.nokkel)]
+    ia, ib = (exact or near or combos)[0]
+    best = max(assonans(x.nokkel, y.nokkel) for x, y in combos)
+    sa, sb = data.info(a, skrift=True), data.info(b, skrift=True)
+    same = clean(a) == clean(b)
+    return {
+        "a": a, "b": b,
+        "varianter": [[asdict(v) for v in va], [asdict(v) for v in vb]],
+        "metode": [ia.metode, ib.metode],
+        "usikker": True,
+        "samme_ord": same,
+        "treff": (ia.nokkel == ib.nokkel) and not same,
+        "multi": (ia.nokkel == ib.nokkel) and not same and len(nuclei(ia.nokkel)) >= 2,
+        "skjevt": (ia.nokkel != ib.nokkel) and skjevt_key(ia.nokkel) == skjevt_key(ib.nokkel),
+        "nokkel": [ia.nokkel, ib.nokkel],
+        "lyd": [ia.lyd, ib.lyd],
+        "assonans": best,
+        "assonans_grad": assonans_grad(best),
+        "skrift_treff": sa.nokkel == sb.nokkel,
+        "skrift_nokkel": [sa.nokkel, sb.nokkel],
+    }
+
+
+def format_pair(r: dict) -> str:
+    a, b = r["a"], r["b"]
+    if r["samme_ord"]:
+        return f"{a} / {b} — samme ord, teller ikke som rimpar"
+    res = "rim-bm treff" if r["treff"] else ("ikke treff (skjevt: samme vokal og konsonanttype)" if r["skjevt"] else "ikke treff")
+    if r["treff"] and r.get("multi"):
+        res += " · multi"
+    if not r["treff"] and r.get("assonans_grad"):
+        res += f" · assonans {round(r['assonans'] * 100)} % ({r['assonans_grad']})"
+    line = f"{a} / {b} — oppslag: {res} — nøkkel «{r['nokkel'][0]}» / «{r['nokkel'][1]}»"
+    if r["lyd"] != [clean(a), clean(b)]:
+        line += f" (lyd «{r['lyd'][0]}» / «{r['lyd'][1]}»)"
+    if any(len(v) > 1 for v in r["varianter"]):
+        line += " · variantavhengig; sjekk planlagt uttale"
+    if r["skrift_treff"] != r["treff"]:
+        line += f" · på skrift: {'treff' if r['skrift_treff'] else 'ikke treff'}"
+    return line
+
+
+# --------------------------------------------------------------------------- --tekst
+
+TOKEN = re.compile(r"[A-Za-zÆØÅæøåÉéÈèÊêÓóÒòÔôÜüÄäÖö']+")
+ADLIB = re.compile(r"\([^)]*\)")
+DIGIT = re.compile(r"\d")
+
+
+def line_syllables(data: Data, tokens: list[str]) -> int:
+    total = 0
+    for t in tokens:
+        info = data.info(t)
+        total += max(info.stav, 1)
+    return total
+
+
+def _innhold(token: str) -> bool:
+    t = token.lower()
+    return len(t) >= 3 and t not in STOP and t not in LYDORD
+
+
+def _innrim(data: Data, tokens: list[str]) -> list[str]:
+    """Innholdsord tidligere i linja som har samme rimnøkkel som sluttordet."""
+    if len(tokens) < 2:
+        return []
+    end = tokens[-1]
+    key = data.info(end).nokkel
+    if not key:
+        return []
+    hit = []
+    for t in tokens[:-1]:
+        if not _innhold(t) or clean(t) == clean(end):
+            continue
+        if data.info(t).nokkel == key and t not in hit:
+            hit.append(t)
+    return hit
+
+
+def analyse_text(data: Data, text: str) -> dict:
+    sections: list[dict] = []
+    cur = {"navn": "", "linjer": []}
+    warnings: list[str] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            if cur["linjer"]:
+                sections.append(cur)
+            cur = {"navn": line, "linjer": []}
+            continue
+        core = ADLIB.sub(" ", line)
+        if DIGIT.search(core):
+            warnings.append(f"Tall i linja «{line}» — skriv tallet med bokstaver.")
+        tokens = TOKEN.findall(unicodedata.normalize("NFC", core))
+        if not tokens:
+            continue
+        for token in tokens:
+            if len(data.infos(token)) > 1:
+                note = f"Flere uttaler for «{token}»: --tekst bruker første variant; kontroller manuelt."
+                if note not in warnings:
+                    warnings.append(note)
+        end = tokens[-1]
+        info = data.info(end)
+        cur["linjer"].append({
+            "tekst": line, "stav": line_syllables(data, tokens),
+            "sluttord": end, "nokkel": info.nokkel,
+            "ord": tokens, "innrim": _innrim(data, tokens),
+        })
+    if cur["linjer"]:
+        sections.append(cur)
+
+    pairs: dict[tuple[str, str], dict] = {}
+    assonans_par: list[dict] = []
+    for sec in sections:
+        seen: list[dict] = []
+        next_letter = 0
+        for ln in sec["linjer"]:
+            partner, kind = None, None
+            for prev in reversed(seen):
+                if prev["nokkel"] == ln["nokkel"]:
+                    partner, kind = prev, "treff"
+                    break
+            if partner is None:
+                for prev in reversed(seen):
+                    if skjevt_key(prev["nokkel"]) == skjevt_key(ln["nokkel"]):
+                        partner, kind = prev, "skjevt"
+                        break
+            if partner is not None:
+                ln["bokstav"] = partner["bokstav"]
+                same = clean(partner["sluttord"]) == clean(ln["sluttord"])
+                ln["rimer_med"] = partner["sluttord"]
+                ln["type"] = "samme ord" if same else kind
+                if kind == "treff" and not same and len(nuclei(ln["nokkel"])) >= 2:
+                    ln["multi"] = True
+                pa, pb = ln.get("ord", []), partner.get("ord", [])
+                if kind == "treff" and not same and len(pa) >= 2 and len(pb) >= 2:
+                    wa, wb = pa[-2], pb[-2]
+                    if _innhold(wa) and _innhold(wb) and clean(wa) != clean(wb) and data.info(wa).nokkel == data.info(wb).nokkel:
+                        ln["flerord"] = f"{wa} {pa[-1]} / {wb} {pb[-1]}"
+                if not same:
+                    k = tuple(sorted((clean(partner["sluttord"]), clean(ln["sluttord"]))))
+                    if k not in pairs:
+                        pairs[k] = check_pair(data, partner["sluttord"].lower(), ln["sluttord"].lower())
+            else:
+                ln["bokstav"] = chr(ord("A") + next_letter % 26)
+                next_letter += 1
+                ln["rimer_med"], ln["type"] = None, None
+                # Assonans er en merknad: den endrer ikke rimskjemaet. Bare de to forrige linjene.
+                cands = [(assonans(prev["nokkel"], ln["nokkel"]), prev) for prev in seen[-2:]
+                         if clean(prev["sluttord"]) != clean(ln["sluttord"])]
+                cands = [c for c in cands if c[0] >= ASSONANS_MIN]
+                if cands:
+                    sc, prev = max(cands, key=lambda c: c[0])
+                    ln["rimer_med"], ln["type"], ln["assonans"] = prev["sluttord"], "assonans", sc
+                    assonans_par.append({"a": prev["sluttord"], "b": ln["sluttord"], "assonans": sc,
+                                         "grad": assonans_grad(sc)})
+            seen.append(ln)
+        sec["skjema"] = "".join(l["bokstav"] for l in sec["linjer"])
+        sec["stavelser"] = [l["stav"] for l in sec["linjer"]]
+    return {"seksjoner": sections, "rimpar": list(pairs.values()), "assonanspar": assonans_par,
+            "advarsler": warnings}
+
+
+def print_text_report(rep: dict) -> None:
+    width = max([len(l["tekst"]) for s in rep["seksjoner"] for l in s["linjer"]] + [20])
+    width = min(width, 60)
+    for sec in rep["seksjoner"]:
+        if sec["navn"]:
+            print(sec["navn"])
+        for l in sec["linjer"]:
+            note = ""
+            if l["type"] == "treff":
+                note = f"treff: {l['rimer_med']}"
+                if l.get("multi"):
+                    note += " · multi"
+                if l.get("flerord"):
+                    note += f" · flerord: {l['flerord']}"
+            elif l["type"] == "skjevt":
+                note = f"skjevt: {l['rimer_med']}"
+            elif l["type"] == "assonans":
+                note = f"assonans: {l['rimer_med']} ({round(l['assonans'] * 100)} %)"
+            elif l["type"] == "samme ord":
+                note = "samme ord"
+            if l.get("innrim"):
+                inn = "innrim: " + ", ".join(l["innrim"])
+                note = f"{note} · {inn}" if note else inn
+            txt = l["tekst"] if len(l["tekst"]) <= width else l["tekst"][: width - 1] + "…"
+            print(f"{l['stav']:>3}  {txt:<{width}}  {l['bokstav']}  «{l['nokkel']}»  {note}".rstrip())
+        print(f"     Skjema: {sec['skjema']} · Stavelser: {' '.join(map(str, sec['stavelser']))}")
+        print()
+    if rep["rimpar"]:
+        print("Rimpar (til rimloggen):")
+        for r in rep["rimpar"]:
+            print("  " + format_pair(r))
+    if rep.get("assonanspar"):
+        print("Assonans (vokalklang, ikke rent rim):")
+        for a in rep["assonanspar"]:
+            print(f"  {a['a']} / {a['b']} — {round(a['assonans'] * 100)} % ({a['grad']})")
+    for w in rep["advarsler"]:
+        print("Advarsel: " + w)
+
+
+# --------------------------------------------------------------------------- --sjekk
+
+STOP = frozenset("""jeg er det og i på en et ei som at du han hun hu vi de dem meg deg seg oss ikke til for med av
+har var så men om fra no noe når hva hvor kan vil skal må den denne har hele alle bare der her ut inn opp ned
+min mitt mine din ditt dine sin sitt sine vår være blir ble gikk går får fikk sa sier hadde tatt gått helt
+ingen aldri mer alt gang kom kommer står sto ser veit vet gjør gjorde enn også""".split())
+LYDORD = frozenset("ey yeah yeh ah aah oh ooh oohh ohh mm mmm mmmm mmmmm uh huh skrr brr shh auu haha hey yo".split())
+KLISJE = ("neon", "velvet", "city lights", "fading", "broken", "shattered", "forever", "lost in your eyes",
+          "you and me against the world", "rise up", "in the night we rise", "hjerter i brann",
+          "drømmer i natten", "i natt vi reiser oss", "øyne fulle av drømmer",
+          "byen sover aldri", "fra bunnen til toppen", "ingen stopper meg")
+INSTRUMENTER = ("sax", "saxofon", "piano", "gitar", "guitar", "strings", "synth", "drums", "trommer", "beat",
+                "bass", "808", "pad", "band", "orchestra", "orkester", "violin", "fiolin", "brass", "bells",
+                "half-time", "drop")
+# [] skal bare styre stemmen, og stemmen er full brystrøst.
+STEMME_NEI = ("falsetto", "falsett", "belting", "anthemic")
+PRODUKSJON = ("autotune", "auto-tune", "reverb", "delay", "fading", "distortion", "sidechain", "harmony", "harmonies")
+CODE_FENCE = re.compile(r"```[^\n]*\n(.*?)```", re.S)
+
+
+def _seksjon_type(navn: str) -> str:
+    n = navn.strip("[]").lower()
+    if any(k in n for k in ("hook", "chorus", "refreng")):
+        return "hook"
+    if n.startswith(("verse", "vers")):
+        return "verse"
+    return "annet"
+
+
+def _seksjon_kort(navn: str) -> str:
+    return re.split(r"\s+-\s+|,", navn.strip("[]"))[0].strip()
+
+
+def _ord(line: str) -> list[str]:
+    return [t.lower() for t in TOKEN.findall(unicodedata.normalize("NFC", ADLIB.sub(" ", line)))]
+
+
+def _linjer(text: str) -> list[tuple[str, str]]:
+    """(seksjon, linje) for alle tekstlinjer; merker og tomme linjer hoppes over."""
+    out, sec = [], ""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            sec = line
+            continue
+        out.append((sec, line))
+    return out
+
+
+def _fasit_tekster(dirs: list[Path]) -> list[tuple[Path, str]]:
+    out = []
+    for d in dirs:
+        if not d.is_dir():
+            continue
+        for f in sorted(d.rglob("*")):
+            if f.suffix not in (".md", ".txt") or not f.is_file():
+                continue
+            raw = f.read_text(encoding="utf-8", errors="replace")
+            blocks = CODE_FENCE.findall(raw) if f.suffix == ".md" else []
+            out.append((f, "\n".join(blocks) if blocks else raw))
+    return out
+
+
+def _gram(ws: list[str], n: int = 4) -> list[tuple[str, ...]]:
+    return [tuple(ws[i:i + n]) for i in range(len(ws) - n + 1)]
+
+
+def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path]) -> list[dict]:
+    funn: list[dict] = []
+    add = lambda kind, msg: funn.append({"type": kind, "melding": msg})
+    if "..." in text or "…" in text:
+        add("avkorting", "Teksten har «...» — skriv hele linjer og gjenta hooken fullt ut")
+    rep = analyse_text(data, text)
+    secs = rep["seksjoner"]
+    lines = _linjer(text)
+    core_set = {" ".join(_ord(l)) for _, l in lines}
+
+    # Gjenbruk: fire ord eller mer på rad som står i en tidligere låt.
+    grams: dict[tuple[str, ...], str] = {}
+    adlib_fasit = [0, 0]
+    for f, ftxt in _fasit_tekster(fasit_dirs):
+        flines = [l for _, l in _linjer(ftxt)]
+        same = sum(" ".join(_ord(l)) in core_set for l in flines)
+        if flines and same > len(core_set) / 2:
+            continue  # samme låt som den som sjekkes
+        adlib_fasit[0] += sum(bool(ADLIB.search(l)) for l in flines)
+        adlib_fasit[1] += len(flines)
+        for l in flines:
+            for g in _gram(_ord(l)):
+                if not all(w in STOP for w in g):
+                    grams.setdefault(g, f.name)
+    meldt: set[str] = set()
+    for _, l in lines:
+        ws = _ord(l)
+        hits = [i for i, g in enumerate(_gram(ws)) if g in grams]
+        i = 0
+        while i < len(hits):
+            j = i
+            while j + 1 < len(hits) and hits[j + 1] == hits[j] + 1:
+                j += 1
+            phrase = " ".join(ws[hits[i]:hits[j] + 4])
+            if phrase not in meldt:
+                meldt.add(phrase)
+                add("gjenbruk", f"«{phrase}» står allerede i {grams[tuple(ws[hits[i]:hits[i] + 4])]}")
+            i = j + 1
+
+    # Gjentatte ord i versene (hook, bro og outro gjentar med vilje).
+    count: dict[str, int] = defaultdict(int)
+    for sec, l in lines:
+        if _seksjon_type(sec) == "verse":
+            for w in _ord(l):
+                if len(w) >= 4 and w not in STOP and w not in LYDORD:
+                    count[w] += 1
+    for w, c in sorted(count.items(), key=lambda x: -x[1]):
+        if c >= 3:
+            add("gjentakelse", f"{w} ×{c} i versene")
+
+    # Seksjonsmerker: vers skal si rap, ingen instrumenter.
+    for sec in dict.fromkeys(s for s, _ in lines):
+        low = sec.lower()
+        if _seksjon_type(sec) == "verse" and "rap" not in low:
+            add("merke", f"{sec}: versmerket sier ikke rap — Suno kan synge det")
+        inst = [w for w in INSTRUMENTER if re.search(r"(?<![a-zæøå])" + re.escape(w) + r"(?![a-zæøå])", low)]
+        if inst:
+            add("merke", f"{sec}: instrument i merket ({', '.join(inst)}) — bare stemme i []")
+        stemme = [w for w in (*STEMME_NEI, *PRODUKSJON) if re.search(r"(?<![a-zæøå])" + re.escape(w) + r"(?![a-zæøå])", low)]
+        if stemme:
+            add("merke", f"{sec}: {', '.join(stemme)} — [] er full brystrøst, uten falsett, belting, Anthemic eller produksjon")
+
+    # Ad-libs i versene mot favorittene.
+    vers = [l for sec, l in lines if _seksjon_type(sec) == "verse"]
+    if vers and adlib_fasit[1]:
+        own = sum(bool(ADLIB.search(l)) for l in vers) / len(vers)
+        ref = adlib_fasit[0] / adlib_fasit[1]
+        if own < 0.6 * ref:
+            add("ad-libs", f"{round(own * 100)} % av verslinjene har ad-libs, favorittene har {round(ref * 100)} %")
+
+    # Hook/refreng skal være likt hver gang.
+    hooks = [s for s in secs if _seksjon_type(s["navn"]) == "hook"]
+    if hooks:
+        first = [" ".join(_ord(l["tekst"])) for l in hooks[0]["linjer"]]
+        for n, h in enumerate(hooks[1:], start=2):
+            for k, l in enumerate(h["linjer"]):
+                cur = " ".join(_ord(l["tekst"]))
+                if k < len(first) and cur != first[k]:
+                    add("refreng", f"{_seksjon_kort(h['navn'])} nr. {n}, linje {k + 1}: «{cur}» ≠ «{first[k]}»")
+
+    # Vers mot vers: linje N bør ha omtrent like mange stavelser (rap: ±3).
+    verses = [s for s in secs if _seksjon_type(s["navn"]) == "verse"]
+    for v in verses[1:]:
+        base = verses[0]
+        for k, (a, b) in enumerate(zip(base["stavelser"], v["stavelser"]), start=1):
+            if abs(a - b) > 3:
+                add("vers", f"{_seksjon_kort(v['navn'])} linje {k}: {b} stavelser mot {a} i {_seksjon_kort(base['navn'])}")
+
+    # Ekko: slutten av et vers skal ikke gjenta starten av hooken som følger.
+    for a, b in zip(secs, secs[1:]):
+        if _seksjon_type(a["navn"]) == "verse" and _seksjon_type(b["navn"]) == "hook":
+            start = {clean(l["sluttord"]) for l in hooks[0]["linjer"][:2]}  # den kanoniske hooken
+            for l in a["linjer"][-2:]:
+                if clean(l["sluttord"]) in start:
+                    add("ekko", f"{_seksjon_kort(a['navn'])} slutter på «{l['sluttord']}», samme som starten av hooken")
+
+    # Klisjeer (bare i teksten, ikke i seksjonsmerkene).
+    low = "\n".join(l for _, l in lines).lower()
+    for k in KLISJE:
+        if re.search(r"(?<![a-zæøå])" + re.escape(k) + r"(?![a-zæøå])", low):
+            add("klisjé", f"«{k}» står på forbudt-lista i Låtskriver.md")
+
+    # Uttale for Suno.
+    sett: set[str] = set()
+    ukjent: list[str] = []
+    for _, l in lines:
+        for t in TOKEN.findall(unicodedata.normalize("NFC", ADLIB.sub(" ", l))):
+            if t in sett:
+                continue
+            sett.add(t)
+            if len(t) == 1 and t.isupper() and t != "I":
+                add("uttale", f"«{t}» kan bli sunget som engelsk bokstav")
+            elif len(t) > 1 and t.isupper():
+                add("uttale", f"«{t}» kan bli stavet bokstav for bokstav")
+            elif len(t) > 1 and clean(t) not in data.wordset and clean(t) not in LYDORD and clean(t) not in ukjent:
+                ukjent.append(clean(t))
+    if ukjent:
+        add("uttale", "ikke i ordbanken eller egne-ord (engelsk/slang?): " + ", ".join(ukjent[:15]))
+    return funn
+
+
+def print_sjekk(funn: list[dict]) -> None:
+    print("Sjekk:")
+    if not funn:
+        print("  ingen funn")
+    for f in funn:
+        print(f"  [{f['type']}] {f['melding']}")
+
+
+# --------------------------------------------------------------------------- cli
+
+def print_groups(groups: dict[int, list[str]]) -> None:
+    for s, ws in groups.items():
+        print(f"## {s} stavelse{'r' if s != 1 else ''}")
+        for i in range(0, len(ws), 6):
+            print("  " + ", ".join(ws[i:i + 6]))
+        print()
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(
+        prog="rim-bm", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("ord", nargs="*", help="Ordet du vil rime på (eller ordene til --par / --info)")
+    modes = p.add_mutually_exclusive_group()
+    modes.add_argument("--batch", action="store_true", help="Søk på hvert ord med én innlasting")
+    modes.add_argument("--par", action="store_true", help="Sjekk første ord mot hvert av de neste")
+    modes.add_argument("--tekst", type=Path, metavar="FIL", help="Analyser en hel tekst")
+    modes.add_argument("--info", action="store_true", help="Vis lydform, trykk, nøkkel og stavelser")
+    p.add_argument("--stav", type=int, default=None, help="Bare denne stavelsesgruppa")
+    p.add_argument("-n", "--limit", type=int, default=40, help="Maks per stavelsesgruppe (standard 40)")
+    p.add_argument("--skjevt", action="store_true", help="Skjeve rim i stedet for rene")
+    p.add_argument("--assonans", action="store_true", help="Vokalklang (rap): samme vokaler fra trykket, sortert etter score")
+    p.add_argument("--vanlige", action="store_true", help="Bare ord som finnes i frekvenslista")
+    p.add_argument("--alle", action="store_true", help="Ikke fjern sammensetninger med søkeordet")
+    p.add_argument("--skrift", action="store_true", help="Sammenlign stavemåte, ikke uttale (v1-oppførsel)")
+    p.add_argument("--json", action="store_true", help="Skriv resultatet som JSON")
+    p.add_argument("--wordlist", type=Path, default=WORDLIST, help=f"Ordliste (standard: {WORDLIST})")
+    p.add_argument("--uttale", type=Path, default=UTTALE, help=f"Unntaksfil (standard: {UTTALE})")
+    p.add_argument("--frekvens", type=Path, default=FREKVENS, help=f"Frekvensliste (standard: {FREKVENS})")
+    p.add_argument("--egne", type=Path, default=EGNE, help=f"Egne ord, slang og steder (standard: {EGNE})")
+    p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, uttale)")
+    p.add_argument("--fasit", type=Path, action="append", help="Mappe med tidligere låter for --sjekk (kan gjentas)")
+    p.add_argument("--ingen-cache", action="store_true", help="Bygg indeksen uten å lese eller skrive cache")
+    p.add_argument("--min-key", type=int, default=0, help=argparse.SUPPRESS)
+    p.add_argument("--versjon", action="version", version=f"rim-bm {VERSION}")
+    args = p.parse_args(argv)
+
+    if args.limit <= 0 or (args.stav is not None and args.stav <= 0):
+        p.error("--limit og --stav må være positive heltall")
+    if args.assonans and args.skjevt:
+        p.error("--assonans og --skjevt kan ikke brukes sammen")
+    if not args.tekst and not args.ord:
+        p.print_help()
+        return 2
+
+    try:
+        data = Data(args.wordlist, args.uttale, args.frekvens, args.skrift, not args.ingen_cache, egne=args.egne)
+    except FileNotFoundError as e:
+        print(f"Finner ikke ordlista: {e}", file=sys.stderr)
+        print("Kjør install.sh, eller sett RIM_BM_WORDLIST til stien for former-utf8.txt.", file=sys.stderr)
+        return 1
+
+    if args.sjekk and not args.tekst:
+        p.error("--sjekk krever --tekst FIL")
+    if args.tekst:
+        text = args.tekst.read_text(encoding="utf-8")
+        rep = analyse_text(data, text)
+        if args.sjekk:
+            rep["sjekk"] = sjekk_tekst(data, text, args.fasit if args.fasit else FASIT)
+        if args.json:
+            print(json.dumps(rep, ensure_ascii=False, indent=2))
+        else:
+            print_text_report(rep)
+            if args.sjekk:
+                print()
+                print_sjekk(rep["sjekk"])
+        return 0
+
+    if args.info:
+        infos = [dict(asdict(data.info(w)), varianter=[asdict(v) for v in data.infos(w)]) for w in args.ord]
+        if args.json:
+            print(json.dumps(infos, ensure_ascii=False, indent=2))
+        else:
+            for i in infos:
+                for v in i["varianter"]:
+                    print(f"{v['ord']}: lyd «{v['lyd']}» · nøkkel «{v['nokkel']}» · {v['stav']} stav. · trykk på stavelse {v['trykk']} · {v['metode']} (anslag)")
+        return 0
+
+    if args.par:
+        if len(args.ord) < 2:
+            print("--par trenger minst to ord.", file=sys.stderr)
+            return 2
+        res = [check_pair(data, args.ord[0], b) for b in args.ord[1:]]
+        if args.json:
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+        else:
+            for r in res:
+                print(format_pair(r))
+        return 0
+
+    if args.batch or len(args.ord) > 1:
+        results = []
+        for word in args.ord:
+            qi, groups = data.rhymes(word, stav=args.stav, limit=args.limit,
+                                    skjevt=args.skjevt, filt=not args.alle, vanlige=args.vanlige,
+                                    assonans=args.assonans)
+            results.append({"ord": asdict(qi), "varianter": [asdict(v) for v in data.infos(word)],
+                            "skjevt": args.skjevt, "grupper": {str(k): v for k, v in groups.items()}})
+        if args.json:
+            print(json.dumps(results, ensure_ascii=False, indent=2))
+        else:
+            for result in results:
+                print(result["ord"]["ord"] + " — tekstbaserte rimkandidater")
+                print_groups({int(k): v for k, v in result["grupper"].items()})
+        return 0
+
+    word = args.ord[0]
+    qi, groups = data.rhymes(word, stav=args.stav, limit=args.limit, skjevt=args.skjevt,
+                             filt=not args.alle, vanlige=args.vanlige, assonans=args.assonans)
+    if args.json:
+        print(json.dumps({"ord": asdict(qi), "varianter": [asdict(v) for v in data.infos(word)], "skjevt": args.skjevt,
+                          "grupper": {str(k): v for k, v in groups.items()}}, ensure_ascii=False, indent=2))
+        return 0
+    mode = "skrift" if args.skrift else "uttale"
+    lyd = f"lyd «{qi.lyd}»  →  " if qi.lyd != clean(word) else ""
+    kind = "assonans" if args.assonans else ("skjeve rim" if args.skjevt else mode)
+    print(f"{word}  →  {lyd}nøkkel «{qi.nokkel}»  ({qi.stav} stav.)  [{len(data.wordset)} former · {kind}]")
+    print()
+    if not groups:
+        print("Ingen treff." + ("" if args.skjevt else " Prøv --skjevt for skjeve rim."))
+        return 0
+    print_groups(groups)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

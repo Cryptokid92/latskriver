@@ -1,0 +1,98 @@
+# uttale.txt — ord som uttales annerledes enn de staves
+#
+# Format: ord  lydform   (ett ord per linje, mellomrom eller tab mellom)
+# Sett ' foran vokalen som har trykk når trykket ikke ligger der rim-bm gjetter:
+#   igjen  ij'enn
+# Lydformen brukes både til rim og stavelsestelling. Linjer som starter med # hoppes over.
+# Legg til egne ord nederst. rim-bm bygger indeksen på nytt neste gang fila endres.
+#
+# Regler rim-bm bruker uten denne fila: -ld → -ll (kald), -nd → -nn (land),
+# -rd → -r (ord), -gt → -kt (sagt), -dt → -tt (godt), ei → æi (vei),
+# o foran dobbel konsonant → å (kropp, flott). Ordene under er unntak og småord.
+
+# Pronomen og småord
+jeg     jæi
+meg     mæi
+deg     dæi
+seg     sæi
+her     hær
+der     dær
+er      ær
+hver    vær
+og      å
+også    åsså
+det     de
+de      di
+dem     demm
+hva     va
+hvem    vemm
+hvor    vor
+hvis    vis
+av      a
+nok     nåkk
+om      åmm
+som     såmm
+han     hann
+hun     hunn
+den     denn
+men     menn
+man     mann
+kan     kann
+skal    skall
+vil     vill
+til     till
+min     minn
+din     dinn
+sin     sinn
+at      att
+et      ett
+en      enn
+fram    framm
+vel     vell
+
+# Stum d
+med     me
+ved     ve
+ned     ne
+sted    ste
+god     go
+blod    blo
+rød     rø
+død     dø
+glad    gla
+tid     ti
+bred    bre
+
+# Stum v
+selv    sell
+halv    hall
+tolv    tåll
+sølv    søll
+
+# eg uttalt æi
+regn    ræin
+tegn    tæin
+
+# Trykk på slutten
+igjen     ij'enn
+ide       id'e
+kafe      kaf'e
+karakter  karakt'er
+kvarter   kvart'er
+
+# Trykk på første stavelse
+gjennom   gj'ennom
+mellom    m'ellom
+
+# o uttalt å
+horten    hårten
+lomme     lumme
+tromme    trumme
+
+# Lånord
+hennessy  h'ennesi
+team      tim
+beat      bit
+deal      dil
+cool      kul
+mail      mæil
