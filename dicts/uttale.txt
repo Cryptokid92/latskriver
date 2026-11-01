@@ -1,0 +1,4 @@
+# Egne uttaler overstyrer uttale-standard.txt. Eksempel:
+# pepper p'epper
+# min minn | min
+# protein prote.'in
