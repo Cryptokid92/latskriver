@@ -36,7 +36,7 @@ Svakt → sterkere (behold stemningen, bytt abstrakt mot konkret):
 
 - «Jeg føler meg alene i kveld» → «Stolen står tom ved vinduet»
 - «Alt falt sammen» → «Nøkkelen ligger der du la den»
-- «Byen sover aldri» → «Bussen går tom forbi Havna»
+- «Byen sover aldri» → «Bussen går tom forbi bensinstasjonen»
 
 Krok-test: si linja uten vers rundt. Hvis den bare er stemning uten handling, adresse eller valg, skriv den om. Vers bygger scene; refreng/hook er valget eller holdningen som kan gjentas.
 
