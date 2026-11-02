@@ -24,7 +24,7 @@ Sjekk verktøy én gang før første pass:
 
 ## Språk og karakter
 
-Skriv bokmål med sangbart talespråk. Behold æ, ø og å. Skriv tall og forkortelser helt ut i selve teksten. Dialekt, engelsk og slang brukes når brukeren ber om det, eller når det er tydelige trekk ved originalen som skal beholdes. Dette unntaket skal være bevisst, ikke tilfeldig språkblanding.
+Skriv bokmål med sangbart talespråk. Behold æ, ø og å. Skriv tall og forkortelser helt ut i selve teksten. Dialekt, engelsk og slang brukes når brukeren ber om det, når det er tydelige trekk ved originalen, eller når et bevisst norsk/engelsk rim eller krok treffer bedre enn rent bokmål. Blandingen skal være motivert (scene, karakter, flow) — ikke tilfeldig kodeveksling eller engelske fyllord for å redde et rim.
 
 Ikke kopier særpregede formuleringer fra eksisterende låter. Vanlige korte titler og uttrykk kan sammenfalle uten at teksten er kopiert. Ved omskriving kan brukerens innsendte materiale beholdes.
 
@@ -164,6 +164,15 @@ Fra 2.1 er de konkrete ordeksemplene rettet fra gjennomgangen: protein og koffei
 - I rimloggen skrives assonans som eget type: `mynter / begynner — assonans 92 % (sterk)`. Ikke kall det et rim-bm-treff. Assonans fyller ikke rimskjemaet.
 - `egne-ord.txt` i dicts-mappa holder slang, engelske ord og stedsnavn, med valgfri lydform (`cash kæsj`). Egne ord rangeres først og teller som vanlige. Legg til ord der i stedet for å kalle et rim usjekket bare fordi ordet mangler i ordbanken. Ikke legg inn vanlige norske ord med ny lydform; det overstyrer ordet overalt.
 
+### Norsk/engelsk-rim
+
+Bevisste par på tvers av språk er lov, særlig i rap, drill og hooks: `gate / late`, `cash / flash`, `natt / that`, `meg / way` når planlagt uttale treffer. Grunnteksten forblir bokmål; engelsk er salt, ikke hovedspråk.
+
+- Døm etter **planlagt uttale**, ikke stavemåte. Engelske ord i norsk flow får ofte norsk-tilnærmet lyd (`cash` → `kæsj`, `flex` → `fleks`). Skriv lydformen i `egne-ord.txt` og sjekk med `rim-bm --par` / `--info`.
+- Et rent treff via egne-ord-lydform teller som rent rim; merk det i rimloggen som `no/en` (f.eks. `gate / late — rim-bm · no/en`). Uten treff: vurder lydrim eller skriv om — ikke late som om det er rent.
+- Ikke stable engelske setninger for å fylle bars. Én engelsk rimende frase eller sluttord som bærer holdningen er nok. Kroken kan være engelsk hvis den består krok-testen.
+- Unngå engelske klisjéhooks («lost in your eyes», «you and me against the world») med mindre brukeren ber om dem.
+
 Bruk `--info` for ord som virker tvilsomme, og forklar manuelle korreksjoner i arbeidsloggen. Ikke endre en god låtlinje bare for å tilfredsstille en kjent programfeil. I `uttale.txt` skiller `|` uttalevarianter, punktum skiller vokalkjerner, og apostrof angir trykk: `protein prote.'in`, `min minn | min`. Egne oppføringer overstyrer `uttale-standard.txt`; variantene må passe planlagt uttale. Et treff i `--par` kan avhenge av én bestemt variant. Vanlig søk undersøker alle variantene, mens `--tekst` bruker første og varsler ved flertydighet.
 
 `--tekst` er en kontrollrapport, ikke automatisk godkjenning av låta. Rapporten kan gi samme rimskjemabokstav til identiske sluttord og grove skjeve treff. Kontroller typen og selve paret, og tell gjentatt krok som gjentakelse. Test at nye ord fungerer utenfor de innebygde eksemplene; et bestått regresjonstestsett er ikke generell språkfasit.
@@ -175,7 +184,8 @@ Stavelsesgrupper gjelder rimordets lengde, ikke hele linjas. Ord med ulikt antal
 Skill mellom:
 
 - **Oppslått:** kilde/kommando og det faktisk returnerte ordet (`rim-bm`, `rimord.no` eller `rimord.com`). Legg til tekstbasert uttalevurdering ved behov.
-- **Rent rim:** rim-bm-treff, samme nøkkel. Dette er rimet du låser. `kald / skall` og `meg / vei` er rene enstavelsesrim.
+- **Rent rim:** rim-bm-treff, samme nøkkel (også via `egne-ord` lydform). Dette er rimet du låser. `kald / skall` og `meg / vei` er rene enstavelsesrim.
+- **Norsk/engelsk-rim:** rent eller lydrim der det ene ordet er engelsk. Merk `no/en` i rimloggen. Stavemåte alene er ikke nok.
 - **Multi:** rent treff med to eller flere vokalkjerner i nøkkelen. `gata / data`, `penger / henger`, `mørket / tørket`, `gatene / matene`, `ordet / sporet`. `--par` skriver `· multi`.
 - **Lydrim:** god antatt lydlikhet med ulik stavemåte, for eksempel `meg / vei`. Det skal likevel være et treff, ikke bare delt vokal.
 - **Skjevt rim:** bevisst ufullstendig lydlikhet. `hat / hatt` kan vise assonans 100 % og er likevel ikke rent, fordi vokallengden skiller. `hjørnet / tårnet` rimer ikke. `mynter / begynner` er assonans, ikke rim.
@@ -212,7 +222,7 @@ Ved filleveranse kan full arbeidslogg ligge i en egen MD-fil, og den rene tekste
 Gjelder når teksten er til Hoggorm. Profilen går foran de generelle reglene over der de krasjer. Les `fornoyd/`, `ad-libs.md` og `style-bank.md` før pass én.
 
 - **Sted:** Horten som standard. Bruk HÅN, Havna, Bastø, Borre, Skoppum, Lystlunden, Karljohansvern når det passer. HÅN og andre slangforkortelser for steder skrives som de er, ikke helt ut. Ikke finn opp andre stedsnavn.
-- **Språk:** bokmål med Oslo/Vestfold-talespråk (veit, væit, hu, no) og engelsk slang. Engelsk i kroken er lov.
+- **Språk:** bokmål med Oslo/Vestfold-talespråk (veit, væit, hu, no) og engelsk slang. Engelsk i kroken er lov. Norsk/engelsk-rim er ønsket når lyden er ren; ikke fyll vers med engelske setninger.
 - **Form:** melodisk drill. Vers først med fjorten til seksten linjer i vers én og åtte til ti i vers to, eller refreng først med åtte linjer per vers. Ikke fire linjers vers. Samme stavelsestall på linjene som deler flow. Et flowskifte er en ny blokk med nytt jevnt tall.
 - **Krok:** dobbel krok-blokk i refrenget (de fire kroklinjene to ganger, deretter to avslutningslinjer). Bro på fire linjer som lander på kroken. Hver kroklinje er kort, fem til ni stavelser, og kan synges på ett åndedrag. Tittelen er den linja som gjentas.
 - **Ad-libs:** som i `fornoyd/` — parentes på slutten av nesten hver linje. Ekko av siste ord i cirka en av fem. Lydord: yeah, ah, ooh, shh, skrr, brr, nei, mmm. Dette erstatter grensen på én per to–fire bars.
@@ -224,6 +234,6 @@ Gjelder når teksten er til Hoggorm. Profilen går foran de generelle reglene ov
 - **Våpen:** bare indirekte. Jakka som henger tungt, hjørnet, vaska cash. Ikke nevn type, skudd, sikte eller avtrekker, og ikke guns, glock eller pistol.
 - **Dop:** antydes, ikke listes. Ikke bruk «pakker» som katalogord.
 - **Variasjon:** ny låt skal ikke gjenbruke kroken, hovedbildet eller fortellingen fra forrige. Sjekk siste filer i `fornoyd/` og `tekster/` og velg en annen vinkel og temperatur.
-- **Rim:** rent rim og multi, i vers og i krok. Assonans er ikke et rim, heller ikke når scoren er sterk. `--tekst` merker multi, flerord og innrim. Minst ett multi eller innrim per fire bars. Kroken har minst ett rent rimpar, og tittelen sitter i den.
+- **Rim:** rent rim og multi, i vers og i krok — også `no/en` via `egne-ord`. Assonans er ikke et rim, heller ikke når scoren er sterk. `--tekst` merker multi, flerord og innrim. Minst ett multi eller innrim per fire bars. Kroken har minst ett rent rimpar, og tittelen sitter i den.
 - **Leveranse:** hele teksten i én blokk. Hooken skrives fullt ut hver gang. Aldri «...».
 - **Suno:** stilprompt på engelsk, én til to sjangre pluss instrumentering, ingen kjønn eller register (egen Voice). Vocal Gender `—`, Max Mode på, Audio Influence rundt syttifem. Stilprompten er egen blokk. Selve teksten er seksjonsmerkene og linjene, klar til å limes inn.
