@@ -17,20 +17,28 @@ Hvis tema eller sjanger mangler og ikke kan utledes av teksten brukeren har gitt
 Sjekk verktøy én gang før første pass:
 
 - Med shell: prøv `rim-bm --versjon` og `rim-bm sol`. Hvis versjonsflagget mangler, kan det være v1: bruk bare kommandoer den støtter. Hvis oppslaget virker, bruk verktøyet for aktuelle enderim. Les `tekststudie.md`, `spilleliste.md` og relevante filer i `studier/` hvis de finnes i arbeidsmappa.
-- Uten fungerende `rim-bm`: prøv `https://www.rimord.com/ord/ORDET`, eventuelt `https://rimord.com/search?language=bokmal&word=ORDET`. URL-kod æ, ø og å.
+- Uten fungerende `rim-bm`: prøv `https://www.rimord.no/nb/?q=ORDET`, eventuelt `https://www.rimord.com/ord/ORDET` eller `https://rimord.com/search?language=bokmal&word=ORDET`. URL-kod æ, ø og å.
 - Uten tilgjengelig oppslag: skriv videre og merk rimene `usjekket`. Ikke bruk tid på gjentatte mislykkede oppslag.
-- Moduslinjen skal være `Rim: rim-bm`, `Rim: rimord.com` eller `Rim: usjekket`. Bytter du metode underveis, oppgi det i rimloggen.
+- Moduslinjen skal være `Rim: rim-bm`, `Rim: rimord.no`, `Rim: rimord.com` eller `Rim: usjekket`. Bytter du metode underveis, oppgi det i rimloggen.
 - Et oppslag bekrefter en kilde, ikke at rimet låter godt. Vurder uttale og trykk separat. Aldri oppgi et oppslag, en avspilling eller en høytlesning som ikke faktisk er utført.
 
 ## Språk og karakter
 
-Skriv bokmål med sangbart talespråk. Behold æ, ø og å. Skriv tall og forkortelser helt ut i selve teksten. Dialekt, engelsk og slang brukes når brukeren ber om det, eller når det er tydelige trekk ved originalen som skal beholdes. Dette unntaket skal være bevisst, ikke tilfeldig språkblanding.
+Skriv bokmål med sangbart talespråk. Behold æ, ø og å. Skriv tall og forkortelser helt ut i selve teksten. Dialekt, engelsk og slang brukes når brukeren ber om det, når det er tydelige trekk ved originalen, eller når et bevisst norsk/engelsk rim eller krok treffer bedre enn rent bokmål. Blandingen skal være motivert (scene, karakter, flow) — ikke tilfeldig kodeveksling eller engelske fyllord for å redde et rim.
 
 Ikke kopier særpregede formuleringer fra eksisterende låter. Vanlige korte titler og uttrykk kan sammenfalle uten at teksten er kopiert. Ved omskriving kan brukerens innsendte materiale beholdes.
 
 Hver linje skal ha én forståelig tanke eller ett bilde. Unngå tunge sammensetninger i raske partier. Minst to håndgripelige detaljer i versene: sted, gjenstand eller handling. Første vers etablerer en scene; andre vers flytter tid, sted, handling eller beslutning.
 
 Bildet skal kunne ses eller holdes: en jakke som henger, lys i et vindu, kontanter på et bord, en dør som ikke går igjen. Et stemningsord er ikke et bilde. Unngå standardbilder som neon, hjerter i brann, drømmer i natten, «lost in your eyes», «you and me against the world», «i natt vi reiser oss», «byen sover aldri», «fra bunnen til toppen» og «ingen stopper meg», med mindre brukeren uttrykkelig ønsker dem. Ikke erstatt dem med like tomme norske fraser.
+
+Svakt → sterkere (behold stemningen, bytt abstrakt mot konkret):
+
+- «Jeg føler meg alene i kveld» → «Stolen står tom ved vinduet»
+- «Alt falt sammen» → «Nøkkelen ligger der du la den»
+- «Byen sover aldri» → «Bussen går tom forbi bensinstasjonen»
+
+Krok-test: si linja uten vers rundt. Hvis den bare er stemning uten handling, adresse eller valg, skriv den om. Vers bygger scene; refreng/hook er valget eller holdningen som kan gjentas.
 
 Velg en tydelig karakter og tone. Humor, skryt og alvor kan blandes når overgangen er motivert. I fest-rap skal skrytet gjerne ha en konkret konsekvens eller en selvironisk vending. Ikke legg inn alvorlige påstander om brukerens virkelige liv uten grunnlag.
 
@@ -54,16 +62,17 @@ Første linje oppgir rimmodus. Oppgi kort:
 8. Rimskjema per seksjon.
 9. Tre til fem aktuelle rimord til et rimførende ord i kroken. Skill mellom faktiske oppslag og egne usjekkede forslag. Ikke tving et rim på signaturfrasen hvis en annen kroklinje bærer rimet bedre.
 
-Favorittsjekk: Kroken fungerer alene; vers én har sted, gjenstand og handling; vers to flytter historien; vers og refreng har ulik energi. Bruk lokale detaljer når de passer. Vurder en dokumentarisk detalj og en kort form, men ikke press inn stedsnavn eller merkevarer uten funksjon.
+Favorittsjekk: Kroken består krok-testen; vers én har sted, gjenstand og handling; vers to flytter historien; vers og refreng har ulik energi og ulik linjelengde. Bruk lokale detaljer når de passer. Ikke press inn stedsnavn eller merkevarer uten funksjon.
 
 ### Pass to — refreng eller hook
 
 Skriv bare eventuell `[Pre-Chorus]` og `[Chorus]`, eller `[Hook]`. Bruk kodeblokk med stavelsestall bak hver linje.
 
+- Pre-refreng (når brukt): to–fire linjer som strammer scenen mot kroken — hever tempo, snevrer adresse eller setter opp valget. Den skal ikke sitere kroken eller gjenta tittelen.
 - Kroken gjentas minst to ganger, skrevet fullt ut hver gang. Ikke kort den ned med «...» eller «osv».
 - Refrenglinjer er kortere enn verslinjer og lette å synge. Tittelen ligger i den linja som gjentas oftest, normalt fem til ni stavelser, på ett åndedrag. Åpne vokaler der tonen holdes. Ikke stable sammensetninger eller en bisetning i kroken. Vers kan rappes tett. Kroken skal kunne synges, også i drill.
 - Gjentatt identisk linje har identisk telling.
-- Vurder enderim, naturlig trykk, pust og uttale før du låser.
+- Vurder enderim, naturlig trykk, pust og uttale før du låser. Trykksterke innholdsord skal kunne lande på sterke taktslag; ikke la en trykklett endelse bære meloditonens topp.
 - I en sunget krok hjelper åpne vokaler på den tonen som holdes. I en rappet hook er det ikke et krav.
 - Identisk krok er tillatt gjentakelse; det teller ikke som et nytt rimpar.
 
@@ -77,12 +86,14 @@ Tell og kontroller alle linjer. Sammenlign plasser som faktisk deler melodi elle
 
 ## Form
 
-Brukerens ønskede form går foran standardene.
+Brukerens ønskede form går foran standardene. Uten ønske: form A for sang, form R for rap. Oppgi valgt formbokstav i pass én.
 
-- **A, sang med vers først:** valgfri kort intro → vers én, åtte linjer → valgfritt pre-refreng, to–fire → refreng, fire–åtte → vers to, seks–ti → refreng → bro, to–fire → siste refreng → kort outro. Fjorten–atten verslinjer totalt.
-- **B, refreng først:** refreng → vers én, fire → refreng → vers to, fire → valgfri bro → siste refreng → kort outro.
+- **A, sang med vers først:** valgfri kort intro → vers én, åtte linjer → valgfritt pre-refreng, to–fire → refreng, fire–åtte → vers to, seks–ti → refreng → bro, to–fire → siste refreng → kort outro. Fjorten–atten verslinjer totalt. Pre-refreng er valgfritt; bruk det når steget fra vers til krok trenger et løft.
+- **B, refreng først:** refreng → vers én, fire → refreng → vers to, fire → valgfri bro → siste refreng → kort outro. Passer korte, hook-tunge popspor.
 - **R, rap:** valgfri intro → hook, fire–åtte → vers én, seksten bars → hook → vers to, tolv–seksten bars → valgfri bro → hook → kort outro. Åtte eller tolv bars kan brukes for korte vers.
 - **Blandet:** velg sangform med sunget refreng; rappede deler følger rapreglene.
+
+Jobb per seksjon: vers = scene og bevegelse; pre-refreng = innsnevring; refreng/hook = gjentagbart valg; bro = nytt perspektiv som lander tilbake i kroken. Ikke la vers to bare omskrive vers én med nye rim.
 
 Lengde er et anslag basert på tempo, antall takter og forventet arrangement. Ikke lov nøyaktig spilletid ut fra linjetall alene. Standardambisjon er omtrent to og et halvt til tre og et halvt minutt, men en kortere låt er bedre enn fyll.
 
@@ -100,7 +111,15 @@ Ad-libs i parentes til slutt, normalt maksimalt én per to–fire bars. De er va
 
 Tell ut fra planlagt norsk uttale, ikke bare antall vokaler. Vokalgrupper og diftonger er hjelpemidler: to nabovokaler kan tilhøre hver sin stavelse. Ikke slå sammen `ei`, `øy`, `au`, `ai` eller `oi` blindt i alle ord.
 
-Del hvert ord i uttalte stavelser og summer ordvis. Eksempel: `ly-set | står | på | i | gan-gen` gir sju. Kontroller hver linje en gang til. Ved ulike resultater: tell ord for ord på nytt. Oppgi en vesentlig uttaleantakelse hvis den endrer antallet.
+Del hvert ord i uttalte stavelser og summer ordvis. Kontroller hver linje en gang til. Ved ulike resultater: tell ord for ord på nytt. Oppgi en vesentlig uttaleantakelse hvis den endrer antallet.
+
+Eksempler:
+
+- `ly-set | står | på | i | gan-gen` → 7
+- `jeg | lar | dø-ra | stå` → 5 (`jeg`/`meg`/`deg`/`seg` normalt én stavelse i sang)
+- `mul-ig-het | er | kort` → 5 (ikke `mulighet` som to)
+
+Feller: sammensetninger (`kontantkort`, `nattbuss`) har flere stavelser enn de ser ut til i rask skanning; trykklett `-e`/`-en`/`-et` teller; `-else` og `-ighet` er minst tre.
 
 - Poprefreng: vanligvis fem–åtte stavelser; vers seks–ti.
 - Ballade: vanligvis seks–åtte, med rom for toner og pauser.
@@ -145,6 +164,15 @@ Fra 2.1 er de konkrete ordeksemplene rettet fra gjennomgangen: protein og koffei
 - I rimloggen skrives assonans som eget type: `mynter / begynner — assonans 92 % (sterk)`. Ikke kall det et rim-bm-treff. Assonans fyller ikke rimskjemaet.
 - `egne-ord.txt` i dicts-mappa holder slang, engelske ord og stedsnavn, med valgfri lydform (`cash kæsj`). Egne ord rangeres først og teller som vanlige. Legg til ord der i stedet for å kalle et rim usjekket bare fordi ordet mangler i ordbanken. Ikke legg inn vanlige norske ord med ny lydform; det overstyrer ordet overalt.
 
+### Norsk/engelsk-rim
+
+Bevisste par på tvers av språk er lov, særlig i rap, drill og hooks: `gate / late`, `cash / flash`, `natt / that`, `meg / way` når planlagt uttale treffer. Grunnteksten forblir bokmål; engelsk er salt, ikke hovedspråk.
+
+- Døm etter **planlagt uttale**, ikke stavemåte. Engelske ord i norsk flow får ofte norsk-tilnærmet lyd (`cash` → `kæsj`, `flex` → `fleks`). Skriv lydformen i `egne-ord.txt` og sjekk med `rim-bm --par` / `--info`.
+- Et rent treff via egne-ord-lydform teller som rent rim; merk det i rimloggen som `no/en` (f.eks. `gate / late — rim-bm · no/en`). Uten treff: vurder lydrim eller skriv om — ikke late som om det er rent.
+- Ikke stable engelske setninger for å fylle bars. Én engelsk rimende frase eller sluttord som bærer holdningen er nok. Kroken kan være engelsk hvis den består krok-testen.
+- Unngå engelske klisjéhooks («lost in your eyes», «you and me against the world») med mindre brukeren ber om dem.
+
 Bruk `--info` for ord som virker tvilsomme, og forklar manuelle korreksjoner i arbeidsloggen. Ikke endre en god låtlinje bare for å tilfredsstille en kjent programfeil. I `uttale.txt` skiller `|` uttalevarianter, punktum skiller vokalkjerner, og apostrof angir trykk: `protein prote.'in`, `min minn | min`. Egne oppføringer overstyrer `uttale-standard.txt`; variantene må passe planlagt uttale. Et treff i `--par` kan avhenge av én bestemt variant. Vanlig søk undersøker alle variantene, mens `--tekst` bruker første og varsler ved flertydighet.
 
 `--tekst` er en kontrollrapport, ikke automatisk godkjenning av låta. Rapporten kan gi samme rimskjemabokstav til identiske sluttord og grove skjeve treff. Kontroller typen og selve paret, og tell gjentatt krok som gjentakelse. Test at nye ord fungerer utenfor de innebygde eksemplene; et bestått regresjonstestsett er ikke generell språkfasit.
@@ -155,8 +183,9 @@ Stavelsesgrupper gjelder rimordets lengde, ikke hele linjas. Ord med ulikt antal
 
 Skill mellom:
 
-- **Oppslått:** kilde/kommando og det faktisk returnerte ordet. Legg til tekstbasert uttalevurdering ved behov.
-- **Rent rim:** rim-bm treff, samme nøkkel. Dette er rimet du låser. `kald / skall` og `meg / vei` er rene enstavelsesrim.
+- **Oppslått:** kilde/kommando og det faktisk returnerte ordet (`rim-bm`, `rimord.no` eller `rimord.com`). Legg til tekstbasert uttalevurdering ved behov.
+- **Rent rim:** rim-bm-treff, samme nøkkel (også via `egne-ord` lydform). Dette er rimet du låser. `kald / skall` og `meg / vei` er rene enstavelsesrim.
+- **Norsk/engelsk-rim:** rent eller lydrim der det ene ordet er engelsk. Merk `no/en` i rimloggen. Stavemåte alene er ikke nok.
 - **Multi:** rent treff med to eller flere vokalkjerner i nøkkelen. `gata / data`, `penger / henger`, `mørket / tørket`, `gatene / matene`, `ordet / sporet`. `--par` skriver `· multi`.
 - **Lydrim:** god antatt lydlikhet med ulik stavemåte, for eksempel `meg / vei`. Det skal likevel være et treff, ikke bare delt vokal.
 - **Skjevt rim:** bevisst ufullstendig lydlikhet. `hat / hatt` kan vise assonans 100 % og er likevel ikke rent, fordi vokallengden skiller. `hjørnet / tårnet` rimer ikke. `mynter / begynner` er assonans, ikke rim.
@@ -182,7 +211,7 @@ Ved en hel låt:
 2. Pass to i kodeblokk, med stavelsestall.
 3. Pass tre: hele teksten i én ren kodeblokk, uten telling, produksjonsnotater eller «...». Hooken gjentas fullt ut hver gang.
 4. Én linje med stavelsestall per seksjon. Del rapvers i firebarsblokker med `|`. Oppgi ad-libs separat hvis brukt.
-5. Rimlogg, høyst åtte linjer. Gruppér flere rimpar på samme linje; angi også indre rim. Ikke påstå kildesjekk uten utført oppslag.
+5. Rimlogg, høyst åtte linjer. Gruppér flere rimpar på samme linje; angi også indre rim. Oppgi kilde per par. Ikke påstå kildesjekk uten utført oppslag.
 6. Uttale, høyst fem relevante ord, bare ved behov.
 7. «Svakest»: én konkret svakhet og ett mulig kutt. Ikke bruk dette som unnskyldning for å levere kjente feil.
 
@@ -193,7 +222,7 @@ Ved filleveranse kan full arbeidslogg ligge i en egen MD-fil, og den rene tekste
 Gjelder når teksten er til Hoggorm. Profilen går foran de generelle reglene over der de krasjer. Les `fornoyd/`, `ad-libs.md` og `style-bank.md` før pass én.
 
 - **Sted:** Horten som standard. Bruk HÅN, Havna, Bastø, Borre, Skoppum, Lystlunden, Karljohansvern når det passer. HÅN og andre slangforkortelser for steder skrives som de er, ikke helt ut. Ikke finn opp andre stedsnavn.
-- **Språk:** bokmål med Oslo/Vestfold-talespråk (veit, væit, hu, no) og engelsk slang. Engelsk i kroken er lov.
+- **Språk:** bokmål med Oslo/Vestfold-talespråk (veit, væit, hu, no) og engelsk slang. Engelsk i kroken er lov. Norsk/engelsk-rim er ønsket når lyden er ren; ikke fyll vers med engelske setninger.
 - **Form:** melodisk drill. Vers først med fjorten til seksten linjer i vers én og åtte til ti i vers to, eller refreng først med åtte linjer per vers. Ikke fire linjers vers. Samme stavelsestall på linjene som deler flow. Et flowskifte er en ny blokk med nytt jevnt tall.
 - **Krok:** dobbel krok-blokk i refrenget (de fire kroklinjene to ganger, deretter to avslutningslinjer). Bro på fire linjer som lander på kroken. Hver kroklinje er kort, fem til ni stavelser, og kan synges på ett åndedrag. Tittelen er den linja som gjentas.
 - **Ad-libs:** som i `fornoyd/` — parentes på slutten av nesten hver linje. Ekko av siste ord i cirka en av fem. Lydord: yeah, ah, ooh, shh, skrr, brr, nei, mmm. Dette erstatter grensen på én per to–fire bars.
@@ -205,6 +234,6 @@ Gjelder når teksten er til Hoggorm. Profilen går foran de generelle reglene ov
 - **Våpen:** bare indirekte. Jakka som henger tungt, hjørnet, vaska cash. Ikke nevn type, skudd, sikte eller avtrekker, og ikke guns, glock eller pistol.
 - **Dop:** antydes, ikke listes. Ikke bruk «pakker» som katalogord.
 - **Variasjon:** ny låt skal ikke gjenbruke kroken, hovedbildet eller fortellingen fra forrige. Sjekk siste filer i `fornoyd/` og `tekster/` og velg en annen vinkel og temperatur.
-- **Rim:** rent rim og multi, i vers og i krok. Assonans er ikke et rim, heller ikke når scoren er sterk. `--tekst` merker multi, flerord og innrim. Minst ett multi eller innrim per fire bars. Kroken har minst ett rent rimpar, og tittelen sitter i den.
+- **Rim:** rent rim og multi, i vers og i krok — også `no/en` via `egne-ord`. Assonans er ikke et rim, heller ikke når scoren er sterk. `--tekst` merker multi, flerord og innrim. Minst ett multi eller innrim per fire bars. Kroken har minst ett rent rimpar, og tittelen sitter i den.
 - **Leveranse:** hele teksten i én blokk. Hooken skrives fullt ut hver gang. Aldri «...».
 - **Suno:** stilprompt på engelsk, én til to sjangre pluss instrumentering, ingen kjønn eller register (egen Voice). Vocal Gender `—`, Max Mode på, Audio Influence rundt syttifem. Stilprompten er egen blokk. Selve teksten er seksjonsmerkene og linjene, klar til å limes inn.
