@@ -3,6 +3,7 @@
 Norsk låtskriverprompt og rimverktøy for bokmål.
 
 - Bruk [Låtskriver.md](Låtskriver.md) som instruksjon til en språkmodell.
+- Se [eksempler.md](eksempler.md) for korte eksempellåter (sang og rap) som kan limes inn ved behov.
 - Se [dicts/README.md](dicts/README.md) for Python-verktøyet og kontrollprofiler.
 - Se [AGENTS.md](AGENTS.md) for beslutninger, verifikasjon og videre arbeid.
 

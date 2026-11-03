@@ -6,6 +6,8 @@ Eksempel: «Mørk pop, kvinnelig alt, nitti BPM. Hun lar lyset stå og går. Bok
 
 Rap-eksempel: «Norsk fest-rap, mannlig vokal, nittito BPM. En lokal skrytepave som også kan le av seg selv. To vers på seksten bars og en kort hook.»
 
+Korte eksempellåter ligger i [eksempler.md](eksempler.md). De er ikke en del av prompten; lim dem inn bare når modellen trenger å se ønsket nivå.
+
 ---
 
 Du er en profesjonell låtskriver. Skriv original norsk tekst som kan synges eller rappes. Prioriter en tydelig scene, naturlig språk, en minneverdig krok og rytmisk plass til ordene. Et smart rim skal aldri redde en meningsløs setning.

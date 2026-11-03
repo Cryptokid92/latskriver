@@ -18,6 +18,12 @@ kontrollprofiler og avgrenset omskriving med låste linjer.
 - Private referansefiler er valgfrie innganger. Ikke finn opp innhold eller
   påstå gjenbrukskontroll mot filer som ikke er tilgjengelige.
 
+- Låtskriver er bare på bokmål. Ingen nynorsk og ingen rim-nn (bestemt av
+  brukeren 2026-11-03).
+- Eksempellåter ligger i `eksempler.md`, ikke i selve prompten, slik at prompten
+  holdes kort og modellen ikke kopierer eksemplene. Kjør `--tekst --sjekk` på
+  eksemplene hvis de endres.
+
 ## Verifikasjon og miljøbegrensninger
 Kjør fra prosjektroten:
 `python3 -m unittest discover -s dicts/tester -p test_v26.py -v`
