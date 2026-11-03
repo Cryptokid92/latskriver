@@ -34,7 +34,7 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 
-VERSION = "2.5.0"
+VERSION = "2.6.0"
 
 
 # --------------------------------------------------------------------------- stier
@@ -767,6 +767,8 @@ CODE_FENCE = re.compile(r"```[^\n]*\n(.*?)```", re.S)
 
 def _seksjon_type(navn: str) -> str:
     n = navn.strip("[]").lower()
+    if re.match(r"^(?:pre[ -]?chorus|pre[ -]?refreng|førrefreng)\b", n):
+        return "pre"
     if any(k in n for k in ("hook", "chorus", "refreng")):
         return "hook"
     if n.startswith(("verse", "vers")):
@@ -814,7 +816,9 @@ def _gram(ws: list[str], n: int = 4) -> list[tuple[str, ...]]:
     return [tuple(ws[i:i + n]) for i in range(len(ws) - n + 1)]
 
 
-def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path]) -> list[dict]:
+def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "hoggorm") -> list[dict]:
+    if profil not in ("sang", "rap", "hoggorm"):
+        raise ValueError(f"Ukjent profil: {profil}")
     funn: list[dict] = []
     add = lambda kind, msg: funn.append({"type": kind, "melding": msg})
     if "..." in text or "…" in text:
@@ -867,7 +871,7 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path]) -> list[dict]:
     # Seksjonsmerker: vers skal si rap, ingen instrumenter.
     for sec in dict.fromkeys(s for s, _ in lines):
         low = sec.lower()
-        if _seksjon_type(sec) == "verse" and "rap" not in low:
+        if profil in ("rap", "hoggorm") and _seksjon_type(sec) == "verse" and "rap" not in low:
             add("merke", f"{sec}: versmerket sier ikke rap — Suno kan synge det")
         inst = [w for w in INSTRUMENTER if re.search(r"(?<![a-zæøå])" + re.escape(w) + r"(?![a-zæøå])", low)]
         if inst:
@@ -878,7 +882,7 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path]) -> list[dict]:
 
     # Ad-libs i versene mot favorittene.
     vers = [l for sec, l in lines if _seksjon_type(sec) == "verse"]
-    if vers and adlib_fasit[1]:
+    if profil == "hoggorm" and vers and adlib_fasit[1]:
         own = sum(bool(ADLIB.search(l)) for l in vers) / len(vers)
         ref = adlib_fasit[0] / adlib_fasit[1]
         if own < 0.6 * ref:
@@ -889,6 +893,8 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path]) -> list[dict]:
     if hooks:
         first = [" ".join(_ord(l["tekst"])) for l in hooks[0]["linjer"]]
         for n, h in enumerate(hooks[1:], start=2):
+            if len(h["linjer"]) != len(first):
+                add("refreng", f"{_seksjon_kort(h['navn'])} nr. {n}: {len(h['linjer'])} linjer mot {len(first)} i første refreng")
             for k, l in enumerate(h["linjer"]):
                 cur = " ".join(_ord(l["tekst"]))
                 if k < len(first) and cur != first[k]:
@@ -974,6 +980,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--uttale", type=Path, default=UTTALE, help=f"Unntaksfil (standard: {UTTALE})")
     p.add_argument("--frekvens", type=Path, default=FREKVENS, help=f"Frekvensliste (standard: {FREKVENS})")
     p.add_argument("--egne", type=Path, default=EGNE, help=f"Egne ord, slang og steder (standard: {EGNE})")
+    p.add_argument("--profil", choices=("sang", "rap", "hoggorm"), default="hoggorm",
+                   help="Regler for --sjekk (standard: hoggorm; sang krever ikke rapmerker)")
     p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, uttale)")
     p.add_argument("--fasit", type=Path, action="append", help="Mappe med tidligere låter for --sjekk (kan gjentas)")
     p.add_argument("--ingen-cache", action="store_true", help="Bygg indeksen uten å lese eller skrive cache")
@@ -1002,7 +1010,7 @@ def main(argv: list[str] | None = None) -> int:
         text = args.tekst.read_text(encoding="utf-8")
         rep = analyse_text(data, text)
         if args.sjekk:
-            rep["sjekk"] = sjekk_tekst(data, text, args.fasit if args.fasit else FASIT)
+            rep["sjekk"] = sjekk_tekst(data, text, args.fasit if args.fasit is not None else (FASIT if args.profil == "hoggorm" else []), args.profil)
         if args.json:
             print(json.dumps(rep, ensure_ascii=False, indent=2))
         else:
@@ -1071,3 +1079,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

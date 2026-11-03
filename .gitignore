@@ -1,0 +1,6 @@
+# Nedlastet Norsk ordbank-dump. dicts/lag-ordliste.py henter den og bygger
+# norsk-ordbank-bm/former-utf8.txt på nytt. Skal ikke committes.
+dicts/norsk-ordbank-bm/ordbank.tar.gz
+
+__pycache__/
+*.py[cod]
