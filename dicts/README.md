@@ -1,4 +1,4 @@
-# rim-bm 2.6
+# rim-bm 2.7
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
@@ -32,6 +32,32 @@ linjer og samme normaliserte hovedtekst; ad-libs, tegnsetting og store/små
 bokstaver sammenlignes fortsatt ikke. Låste linjer i omskrivingsprompten har
 strengere krav og skal sammenlignes ordrett.
 
+## Flowblokker (2.7)
+
+Et flowmerke på egen linje starter en flowblokk: `{flow A}` eller `{flow A 10}`
+(navn og valgfritt stavelsesmål; `{flyt A}` godtas også). Blokka varer til neste
+flowmerke eller seksjonsmerke. Samme navn betyr samme flow, også i en annen seksjon.
+Merkene telles ikke som tekst, og et ukjent `{...}`-merke gir en advarsel.
+
+```text
+[Verse 1 - rap, chest voice]
+{flow A 10}
+Jakka henger tungt på stolen min nå
+{flow B 12}
+Kontanter ligger samlet på kjøkkenbordet
+[Verse 2 - rap, faster flow, chest voice]
+{flow B 12}
+Nøkkelen ligger fortsatt der du la den nå
+```
+
+`--tekst` skriver `Flow: A=10: 10 | B=12: 12` under seksjonen, og JSON har
+`blokker` per seksjon og `flow` per linje. `--sjekk` sammenligner linjene i hver
+flow mot målet, eller mot det vanligste tallet når målet mangler, og melder avvik
+over tre stavelser, ulike mål for samme flow og verslinjer uten flowmerke. Uten
+flowmerker brukes den gamle sammenligningen vers én mot vers to, linje for linje.
+Grensen på tre er den samme som før; innstramming er neste steg. Merkene hører
+hjemme i kontrollkopien, ikke i teksten som limes inn i Suno.
+
 ## Kommandoer
 
 ```bash
@@ -58,7 +84,7 @@ Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser f�
 
 ## Låtsjekk
 
-`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, versmerker uten «rap», instrumenter i merkene, ad-libs mot favorittene, hook som avviker, vers to mot vers én, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Tidligere låter leses fra `artists/Hoggorm/studio/fornoyd` og `tekster`; bruk `--fasit DIR` eller `RIM_BM_FASIT` for andre mapper. Funnene er forslag, ikke dom.
+`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, versmerker uten «rap», instrumenter i merkene, ad-libs mot favorittene, hook som avviker, flowblokker (eller vers to mot vers én uten flowmerker), ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Tidligere låter leses fra `artists/Hoggorm/studio/fornoyd` og `tekster`; bruk `--fasit DIR` eller `RIM_BM_FASIT` for andre mapper. Funnene er forslag, ikke dom.
 
 ## Assonans
 
@@ -110,7 +136,7 @@ De leverte standarduttalene følger alltid skriptet. `--wordlist`, `--uttale` og
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tester -v
 ```
 
-85 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
+107 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
 
 ## Gjenværende begrensninger
 

@@ -9,7 +9,7 @@ Bruk:
   rim-bm --par kald skall vei    sjekk par til rimloggen (kald/skall, kald/vei)
   rim-bm --par gata data         rent rim; multi når nøkkelen har to eller flere vokalkjerner
   rim-bm --tekst låt.txt         rimpar, rimskjema, stavelser, multi, flerord og innrim
-  rim-bm --tekst låt.txt --sjekk låtsjekk: gjenbruk, gjentakelser, merker, hook, uttale
+  rim-bm --tekst låt.txt --sjekk låtsjekk: gjenbruk, gjentakelser, merker, hook, flow, uttale
   rim-bm --info gatene           lydform, trykk, nøkkel og stavelser for et ord
   rim-bm kald --skrift           som v1: sammenlign stavemåte, ikke uttale
 
@@ -34,7 +34,7 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 
-VERSION = "2.6.0"
+VERSION = "2.7.0"
 
 
 # --------------------------------------------------------------------------- stier
@@ -588,6 +588,17 @@ def format_pair(r: dict) -> str:
 TOKEN = re.compile(r"[A-Za-zÆØÅæøåÉéÈèÊêÓóÒòÔôÜüÄäÖö']+")
 ADLIB = re.compile(r"\([^)]*\)")
 DIGIT = re.compile(r"\d")
+# Flowmerke på egen linje: {flow A} eller {flow A 10} (navn og valgfritt stavelsesmål). «flyt» godtas også.
+FLOW = re.compile(r"^\{\s*(?:flow|flyt)\s+([0-9A-Za-zÆØÅæøå]+)(?:\s+(\d+))?\s*\}$", re.I)
+KRØLL = re.compile(r"^\{.*\}$")
+
+
+def flow_merke(line: str) -> tuple[str, int | None] | None:
+    """(navn, mål) for et flowmerke, ellers None. Navnet skrives med store bokstaver."""
+    m = FLOW.match(line.strip())
+    if not m:
+        return None
+    return m.group(1).upper(), int(m.group(2)) if m.group(2) else None
 
 
 def line_syllables(data: Data, tokens: list[str]) -> int:
@@ -622,7 +633,7 @@ def _innrim(data: Data, tokens: list[str]) -> list[str]:
 
 def analyse_text(data: Data, text: str) -> dict:
     sections: list[dict] = []
-    cur = {"navn": "", "linjer": []}
+    cur = {"navn": "", "linjer": [], "blokker": []}
     warnings: list[str] = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -631,7 +642,14 @@ def analyse_text(data: Data, text: str) -> dict:
         if line.startswith("[") and line.endswith("]"):
             if cur["linjer"]:
                 sections.append(cur)
-            cur = {"navn": line, "linjer": []}
+            cur = {"navn": line, "linjer": [], "blokker": []}
+            continue
+        if KRØLL.match(line):
+            merke = flow_merke(line)
+            if merke:
+                cur["blokker"].append({"flow": merke[0], "mal": merke[1], "linjer": [], "stavelser": []})
+            else:
+                warnings.append(f"Ukjent merke «{line}» — flowmerker skrives {{flow A}} eller {{flow A 10}}.")
             continue
         core = ADLIB.sub(" ", line)
         if DIGIT.search(core):
@@ -646,11 +664,17 @@ def analyse_text(data: Data, text: str) -> dict:
                     warnings.append(note)
         end = tokens[-1]
         info = data.info(end)
+        blokk = cur["blokker"][-1] if cur["blokker"] else None
+        stav = line_syllables(data, tokens)
         cur["linjer"].append({
-            "tekst": line, "stav": line_syllables(data, tokens),
+            "tekst": line, "stav": stav,
             "sluttord": end, "nokkel": info.nokkel,
             "ord": tokens, "innrim": _innrim(data, tokens),
+            "flow": blokk["flow"] if blokk else None,
         })
+        if blokk:
+            blokk["linjer"].append(len(cur["linjer"]))
+            blokk["stavelser"].append(stav)
     if cur["linjer"]:
         sections.append(cur)
 
@@ -702,6 +726,7 @@ def analyse_text(data: Data, text: str) -> dict:
             seen.append(ln)
         sec["skjema"] = "".join(l["bokstav"] for l in sec["linjer"])
         sec["stavelser"] = [l["stav"] for l in sec["linjer"]]
+        sec["blokker"] = [b for b in sec["blokker"] if b["linjer"]]
     return {"seksjoner": sections, "rimpar": list(pairs.values()), "assonanspar": assonans_par,
             "advarsler": warnings}
 
@@ -732,6 +757,10 @@ def print_text_report(rep: dict) -> None:
             txt = l["tekst"] if len(l["tekst"]) <= width else l["tekst"][: width - 1] + "…"
             print(f"{l['stav']:>3}  {txt:<{width}}  {l['bokstav']}  «{l['nokkel']}»  {note}".rstrip())
         print(f"     Skjema: {sec['skjema']} · Stavelser: {' '.join(map(str, sec['stavelser']))}")
+        if sec.get("blokker"):
+            print("     Flow: " + " | ".join(
+                f"{b['flow']}{'=' + str(b['mal']) if b['mal'] else ''}: {' '.join(map(str, b['stavelser']))}"
+                for b in sec["blokker"]))
         print()
     if rep["rimpar"]:
         print("Rimpar (til rimloggen):")
@@ -794,6 +823,8 @@ def _linjer(text: str) -> list[tuple[str, str]]:
         if line.startswith("[") and line.endswith("]"):
             sec = line
             continue
+        if KRØLL.match(line):
+            continue  # flowmerker og andre {}-merker er ikke tekst
         out.append((sec, line))
     return out
 
@@ -814,6 +845,39 @@ def _fasit_tekster(dirs: list[Path]) -> list[tuple[Path, str]]:
 
 def _gram(ws: list[str], n: int = 4) -> list[tuple[str, ...]]:
     return [tuple(ws[i:i + n]) for i in range(len(ws) - n + 1)]
+
+
+# Tillatt avvik fra flowens stavelsestall. Samme romslighet som den gamle vers-mot-vers-sjekken;
+# innstrammingen (Låtskriver.md sier høyst én) er neste steg, se AGENTS.md.
+FLOW_AVVIK = 3
+
+
+def _sjekk_flow(secs: list[dict], verses: list[dict], add) -> None:
+    """Linjer med samme flownavn skal ha omtrent samme stavelsestall, på tvers av seksjoner."""
+    flows: dict[str, dict] = {}
+    for sec in secs:
+        for b in sec["blokker"]:
+            f = flows.setdefault(b["flow"], {"mal": [], "linjer": []})
+            if b["mal"] is not None and b["mal"] not in f["mal"]:
+                f["mal"].append(b["mal"])
+            f["linjer"] += [(sec, k, s) for k, s in zip(b["linjer"], b["stavelser"])]
+    for navn, f in flows.items():
+        if len(f["mal"]) > 1:
+            add("flow", f"flow {navn} har ulike mål: {', '.join(map(str, f['mal']))} — det første gjelder")
+        if f["mal"]:
+            mal, kilde = f["mal"][0], "mål"
+        else:
+            counts: dict[int, int] = {}
+            for _, _, s in f["linjer"]:
+                counts[s] = counts.get(s, 0) + 1
+            mal, kilde = max(counts, key=counts.get), "vanligst"
+        for sec, k, s in f["linjer"]:
+            if abs(s - mal) > FLOW_AVVIK:
+                add("flow", f"{_seksjon_kort(sec['navn']) or 'tekst'} linje {k}: {s} stavelser, flow {navn} har {mal} ({kilde})")
+    for v in verses:
+        uten = [k for k, l in enumerate(v["linjer"], start=1) if l["flow"] is None]
+        if uten:
+            add("flow", f"{_seksjon_kort(v['navn'])}: linje {', '.join(map(str, uten))} mangler flowmerke")
 
 
 def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "hoggorm") -> list[dict]:
@@ -900,9 +964,12 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
                 if k < len(first) and cur != first[k]:
                     add("refreng", f"{_seksjon_kort(h['navn'])} nr. {n}, linje {k + 1}: «{cur}» ≠ «{first[k]}»")
 
-    # Vers mot vers: linje N bør ha omtrent like mange stavelser (rap: ±3).
+    # Med flowmerker: linjer i samme flow sammenlignes. Uten: vers mot vers, linje N (±3).
     verses = [s for s in secs if _seksjon_type(s["navn"]) == "verse"]
-    for v in verses[1:]:
+    har_flow = any(s["blokker"] for s in secs)
+    if har_flow:
+        _sjekk_flow(secs, verses, add)
+    for v in [] if har_flow else verses[1:]:
         base = verses[0]
         for k, (a, b) in enumerate(zip(base["stavelser"], v["stavelser"]), start=1):
             if abs(a - b) > 3:
@@ -982,7 +1049,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--egne", type=Path, default=EGNE, help=f"Egne ord, slang og steder (standard: {EGNE})")
     p.add_argument("--profil", choices=("sang", "rap", "hoggorm"), default="hoggorm",
                    help="Regler for --sjekk (standard: hoggorm; sang krever ikke rapmerker)")
-    p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, uttale)")
+    p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, flow, uttale)")
     p.add_argument("--fasit", type=Path, action="append", help="Mappe med tidligere låter for --sjekk (kan gjentas)")
     p.add_argument("--ingen-cache", action="store_true", help="Bygg indeksen uten å lese eller skrive cache")
     p.add_argument("--min-key", type=int, default=0, help=argparse.SUPPRESS)

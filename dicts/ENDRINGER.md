@@ -1,3 +1,11 @@
+# Endringer fra 2.6 til 2.7
+
+- Eksplisitte flowblokker: `{flow A}` eller `{flow A 10}` på egen linje starter en blokk med navn og valgfritt stavelsesmål (`{flyt A}` godtas). Blokka varer til neste flowmerke eller seksjonsmerke. Merkene telles ikke som tekst og er usynlige for gjenbruk-, klisjé- og uttalesjekken. Ukjente `{...}`-merker gir en advarsel.
+- `--tekst` skriver `Flow:` per seksjon. JSON har `blokker` (flow, mål, linjenumre, stavelser) per seksjon og `flow` per linje.
+- `--sjekk` sammenligner linjer med samme flownavn på tvers av seksjoner, mot målet eller det vanligste tallet. Melder avvik over tre, ulike mål for samme flow og verslinjer uten flowmerke. Et planlagt flowskifte på ulike steder i versene gir ikke lenger falske vers-funn.
+- Uten flowmerker er sjekken uendret (vers én mot vers to, linje for linje, ±3).
+- 15 nye tester, til sammen 107.
+
 # Endringer fra 2.4 til 2.5
 
 - Stum d i vanlige bøyde rd-ord: `ordet` rimer på `sporet`, `gjorde` på `spore`, `harde` på `klare`, `gjerde` på `flere`. Lydformene ligger i `uttale-standard.txt`. `verden`, `order`, `herde`, `byrde` og `garde` beholder uttalt d, så `verden` / `ferden` ikke lenger er treff.

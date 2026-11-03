@@ -15,6 +15,11 @@ kontrollprofiler og avgrenset omskriving med låste linjer.
 - Kontroll av refreng sammenligner fortsatt normalisert hovedtekst. Låste
   linjer i omskrivingsarbeidsflyten skal derimot beholdes ordrett. Låsing er en
   promptregel, ikke en implementert automatisk redigeringsmotor.
+- Flowblokker (2.7) er eksplisitte: `{flow A 10}` på egen linje i en
+  kontrollkopi. Samme navn = samme flow på tvers av seksjoner. Merkene skal ikke
+  med i pass tre eller Suno-teksten. Med flowmerker erstatter flowsjekken
+  vers-mot-vers-sjekken; uten merker er gammel oppførsel beholdt. Avviksgrensen
+  er bevisst fortsatt ±3 (`FLOW_AVVIK` i rim-bm) mens prompten krever høyst én.
 - Private referansefiler er valgfrie innganger. Ikke finn opp innhold eller
   påstå gjenbrukskontroll mot filer som ikke er tilgjengelige.
 
@@ -32,9 +37,12 @@ Direkte Git-kloning feilet på proxyforbindelsen; GitHub-tilkoblingen kunne lese
 men avviste opprettelse av gren med HTTP 403 (Resource not accessible by integration).
 
 ## Neste arbeid
-1. Kjør full suite med komplett datasett og kontroller bakoverkompatibilitet.
-2. Innfør eksplisitte flowblokker før stavelseskontrollen strammes inn.
-   Nåværende sammenligning mellom vers er ikke en kontroll av flowblokker.
+1. Ferdig: full suite kjørt med komplett datasett (92 grønne før 2.7, 107 etter).
+2. Ferdig i 2.7: eksplisitte flowblokker i prompt og rim-bm.
+   Neste: stram inn stavelseskontrollen per flowblokk (`FLOW_AVVIK` fra 3 mot
+   promptens høyst én, eventuelt per profil), og vurder å kreve minst ett
+   flowskifte i rapvers på seksten bars. Verktøyets stavelsestall er anslag;
+   test innstrammingen mot ekte låter før den gjøres streng.
 3. Vurder separate profilfiler og oppdeling av den store prompten uten å miste
    brukerens personlige regler. Dette er ikke gjennomført i første runde.
 4. Deretter: alternative kroker, uttalevalg per låt, bedre låtrapport,
