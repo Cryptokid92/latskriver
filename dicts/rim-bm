@@ -34,7 +34,7 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 
-VERSION = "2.6.0"
+VERSION = "2.7.0"
 
 
 # --------------------------------------------------------------------------- stier
@@ -949,6 +949,100 @@ def print_sjekk(funn: list[dict]) -> None:
         print(f"  [{f['type']}] {f['melding']}")
 
 
+# --------------------------------------------------------------------------- eksplisitt skriveplan
+
+def plan_sections(text: str) -> list[dict]:
+    """Behold tomme seksjoner og ordrett tekst; ignorer bare blanke linjer."""
+    sections = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        if line.strip().startswith('[') and line.strip().endswith(']'):
+            sections.append({'merke': line, 'linjer': []})
+        else:
+            if not sections:
+                sections.append({'merke': '', 'linjer': []})
+            sections[-1]['linjer'].append(line)
+    return sections
+
+
+def validate_plan(plan: dict) -> None:
+    def integer(value):
+        return type(value) is int and value > 0
+    if not isinstance(plan, dict) or set(plan) - {'versjon', 'flow', 'las'}:
+        raise ValueError('Planen må være et objekt med versjon, flow og/eller las')
+    if type(plan.get('versjon')) is not int or plan['versjon'] != 1:
+        raise ValueError('Planversjon må være 1')
+    occupied = set()
+    for kind in ('flow', 'las'):
+        entries = plan.get(kind, [])
+        if not isinstance(entries, list):
+            raise ValueError(f'{kind} må være en liste')
+        for entry in entries:
+            allowed = {'seksjon', 'fra', 'til', 'stavelser', 'toleranse'} if kind == 'flow' else {'seksjon', 'linjer'}
+            if not isinstance(entry, dict) or set(entry) - allowed or not integer(entry.get('seksjon')):
+                raise ValueError(f'Ugyldig {kind}-oppføring eller seksjonsnummer')
+            if kind == 'flow':
+                if not all(integer(entry.get(k)) for k in ('fra', 'til', 'stavelser')) or entry['til'] < entry['fra']:
+                    raise ValueError('Flow krever positiv fra, til og stavelser; til må være >= fra')
+                tolerance = entry.get('toleranse', 0)
+                if type(tolerance) is not int or tolerance < 0:
+                    raise ValueError('Toleranse må være et heltall >= 0')
+                slots = {(entry['seksjon'], i) for i in range(entry['fra'], entry['til'] + 1)}
+                if occupied & slots:
+                    raise ValueError('Flowblokker kan ikke overlappe')
+                occupied.update(slots)
+            elif 'linjer' in entry:
+                lines = entry['linjer']
+                if not isinstance(lines, list) or not lines or not all(integer(i) for i in lines) or len(lines) != len(set(lines)):
+                    raise ValueError('Låste linjer må være en ikke-tom liste med unike positive heltall')
+
+
+def check_plan(data: Data, text: str, plan: dict, original: str | None = None) -> list[dict]:
+    validate_plan(plan)
+    sections = plan_sections(text)
+    findings = []
+    def add(kind, sec, line, message):
+        findings.append({'type': kind, 'seksjon': sec, 'linje': line,
+                         'melding': f'Seksjon {sec}' + (f', linje {line}' if line else '') + ': ' + message})
+    for block in plan.get('flow', []):
+        n = block['seksjon']
+        if n > len(sections) or block['til'] > len(sections[n - 1]['linjer']):
+            add('flow', n, None, 'flowblokken peker utenfor teksten')
+            continue
+        for i in range(block['fra'], block['til'] + 1):
+            line = sections[n - 1]['linjer'][i - 1]
+            count = line_syllables(data, TOKEN.findall(unicodedata.normalize('NFC', ADLIB.sub(' ', line))))
+            if abs(count - block['stavelser']) > block.get('toleranse', 0):
+                add('flow', n, i, f"{count} stavelser; mål {block['stavelser']} ±{block.get('toleranse', 0)} (anslag)")
+    locks = plan.get('las', [])
+    if locks and original is None:
+        raise ValueError('Låser krever --original FIL')
+    before = plan_sections(original or '')
+    for lock in locks:
+        n = lock['seksjon']
+        if n > len(before):
+            raise ValueError(f'Låst seksjon {n} finnes ikke i originalen')
+        source = before[n - 1]
+        indices = lock.get('linjer')
+        if indices and max(indices) > len(source['linjer']):
+            raise ValueError(f'Låst linje finnes ikke i originalens seksjon {n}')
+        if n > len(sections):
+            add('las', n, None, 'låst seksjon mangler')
+            continue
+        current = sections[n - 1]
+        if current['merke'] != source['merke']:
+            add('las', n, None, 'seksjonsmerket er endret eller seksjonen er flyttet')
+        if indices is None:
+            if current['linjer'] != source['linjer']:
+                add('las', n, None, 'låst seksjon er endret (innhold eller linjeantall)')
+        else:
+            for i in indices:
+                if i > len(current['linjer']) or current['linjer'][i - 1] != source['linjer'][i - 1]:
+                    add('las', n, i, 'låst linje er endret, flyttet eller fjernet')
+    return findings
+
+
 # --------------------------------------------------------------------------- cli
 
 def print_groups(groups: dict[int, list[str]]) -> None:
@@ -982,12 +1076,31 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--egne", type=Path, default=EGNE, help=f"Egne ord, slang og steder (standard: {EGNE})")
     p.add_argument("--profil", choices=("sang", "rap", "hoggorm"), default="hoggorm",
                    help="Regler for --sjekk (standard: hoggorm; sang krever ikke rapmerker)")
+    p.add_argument("--plan", type=Path, help="JSON-plan med flowblokker og låste linjer; krever --tekst og --sjekk")
+    p.add_argument("--original", type=Path, help="Originaltekst for låser i --plan")
+    p.add_argument("--streng", action="store_true", help="Avslutt med kode 1 ved funn fra --sjekk")
     p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, uttale)")
     p.add_argument("--fasit", type=Path, action="append", help="Mappe med tidligere låter for --sjekk (kan gjentas)")
     p.add_argument("--ingen-cache", action="store_true", help="Bygg indeksen uten å lese eller skrive cache")
     p.add_argument("--min-key", type=int, default=0, help=argparse.SUPPRESS)
     p.add_argument("--versjon", action="version", version=f"rim-bm {VERSION}")
     args = p.parse_args(argv)
+
+    if (args.plan or args.original or args.streng) and not (args.tekst and args.sjekk):
+        p.error("--plan, --original og --streng krever --tekst og --sjekk")
+    if args.original and not args.plan:
+        p.error("--original krever --plan")
+    plan, original = None, None
+    try:
+        if args.plan:
+            plan = json.loads(args.plan.read_text(encoding="utf-8"))
+            validate_plan(plan)
+            if plan.get("las") and not args.original:
+                p.error("Låser krever --original FIL")
+        if args.original:
+            original = args.original.read_text(encoding="utf-8")
+    except (OSError, ValueError) as e:
+        p.error(str(e))
 
     if args.limit <= 0 or (args.stav is not None and args.stav <= 0):
         p.error("--limit og --stav må være positive heltall")
@@ -1001,7 +1114,7 @@ def main(argv: list[str] | None = None) -> int:
         data = Data(args.wordlist, args.uttale, args.frekvens, args.skrift, not args.ingen_cache, egne=args.egne)
     except FileNotFoundError as e:
         print(f"Finner ikke ordlista: {e}", file=sys.stderr)
-        print("Kjør install.sh, eller sett RIM_BM_WORDLIST til stien for former-utf8.txt.", file=sys.stderr)
+        print("Kjør python3 dicts/lag-ordliste.py, eller sett RIM_BM_WORDLIST til stien for former-utf8.txt.", file=sys.stderr)
         return 1
 
     if args.sjekk and not args.tekst:
@@ -1011,6 +1124,14 @@ def main(argv: list[str] | None = None) -> int:
         rep = analyse_text(data, text)
         if args.sjekk:
             rep["sjekk"] = sjekk_tekst(data, text, args.fasit if args.fasit is not None else (FASIT if args.profil == "hoggorm" else []), args.profil)
+        if plan is not None:
+            try:
+                explicit = check_plan(data, text, plan, original)
+            except ValueError as e:
+                p.error(str(e))
+            if plan.get("flow"):
+                rep["sjekk"] = [f for f in rep["sjekk"] if f["type"] != "vers"]
+            rep["sjekk"].extend(explicit)
         if args.json:
             print(json.dumps(rep, ensure_ascii=False, indent=2))
         else:
@@ -1018,7 +1139,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.sjekk:
                 print()
                 print_sjekk(rep["sjekk"])
-        return 0
+        return 1 if args.streng and rep.get("sjekk") else 0
 
     if args.info:
         infos = [dict(asdict(data.info(w)), varianter=[asdict(v) for v in data.infos(w)]) for w in args.ord]

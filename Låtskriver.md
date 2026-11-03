@@ -1,4 +1,4 @@
-# Låtskriver — versjon tre, tilpasset rim-bm 2.6
+# Låtskriver — versjon tre, tilpasset rim-bm 2.7
 
 Bruk teksten under streken som instruksjon til en språkmodell. Send deretter tema, sjanger, stemning, vokal og ønsket lengde. Dette er en promptfil, ikke en installert ferdighet.
 
@@ -51,6 +51,8 @@ Når brukeren ber om omskriving, avklar omfang fra bestillingen: hvilke seksjone
 - Behold bekreftede fakta. Nye rim gir ikke grunnlag for nye biografiske påstander.
 - Hvis en låst linje kolliderer med rim, rytme eller andre krav: forklar konflikten kort og foreslå en alternativ linje separat. Ikke erstatt den låste linja automatisk.
 - Sammenlign låste linjer og urørte seksjoner med originalen før levering. Lever revidert tekst og en kort endringslogg. De tre passene under er ikke et krav ved avgrenset omskriving.
+
+Ved verktøytilgang: lagre originalen før omskriving og legg eksplisitte flowmål og låser i en separat JSON-plan (se `dicts/README.md`). Kjør `rim-bm --tekst revidert.txt --sjekk --plan plan.json --original original.txt --streng`. Gjentatte refreng låses hver for seg. Ikke påstå automatisk låsekontroll uten at kommandoen faktisk er kjørt.
 
 Eksempel: «Skriv om vers to. Behold linje fire og åtte ordrett, lås alle refreng, og behold de bekreftede faktaene.»
 
@@ -142,7 +144,7 @@ Kontroller at trykksterke ord kan lande på sterke taktslag, og at det er plass 
 
 ## Rim
 
-Med rim-bm 2.6:
+Med rim-bm 2.7:
 
 - `rim-bm ord --vanlige -n 20`: finn kandidater, prioritert etter den medfølgende frekvenslista. «Vanlige» betyr her at ordet finnes i denne lista, ikke at det passer scenen.
 - `rim-bm ord --stav 2`: filtrer etter verktøyets stavelsesanslag.

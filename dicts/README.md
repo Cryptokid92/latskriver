@@ -1,4 +1,4 @@
-# rim-bm 2.6
+# rim-bm 2.7
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
@@ -110,7 +110,7 @@ De leverte standarduttalene følger alltid skriptet. `--wordlist`, `--uttale` og
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tester -v
 ```
 
-92 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
+101 tester. Testpakken dekker versjonene 2.0–2.7. 2.6-suiten var 92 tester mot 600 400 former. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
 
 ## Gjenværende begrensninger
 
@@ -124,4 +124,42 @@ Ordlista og frekvenslista er uendret fra den innsendte v2-pakken (600 400 ordfor
 - FrequencyWords av Hermit Dave, OpenSubtitles 2018. CC BY-SA 4.0, som oppgitt i `frekvens/KILDE.md`.
 
 `lag-ordliste.py --dump fil.tar.gz` kan bygge ordlista fra en lokal originaldump. Uten `--dump` laster skriptet ned Norsk ordbank-dumpen til `norsk-ordbank-bm/ordbank.tar.gz` og skriver `norsk-ordbank-bm/former-utf8.txt` på nytt. Dumpen er oppført i `.gitignore` og skal ikke committes; kjør `python3 lag-ordliste.py` for å hente og bygge den lokalt. Endringene i 2.1 og 2.2 gjelder program, uttaledata, dokumentasjon og tester; de store datalistene er ikke bygget på nytt i de versjonene.
+
+
+## Skriveplan og låser (2.7)
+
+En separat JSON-plan holder kontrollregler ute av den Suno-klare teksten.
+Se `examples/plan.json` i prosjektroten. Tilpass planen til din egen låt.
+
+```bash
+python3 dicts/rim-bm --tekst revidert.txt --sjekk --profil rap \
+  --plan examples/plan.json --original original.txt --json --streng
+```
+
+- `versjon` skal være heltallet `1` (planformat, ikke programversjon).
+- `flow` og `las` er valgfrie lister. Ukjente felt avvises for å fange skrivefeil.
+- Seksjoner nummereres fra 1 i rekkefølgen de forekommer, også gjentatte refreng
+  og tomme seksjoner. Tekst før første seksjonsmerke blir en egen seksjon.
+- Linjenumre starter på 1 innen hver seksjon; blanke linjer og seksjonsmerker
+  telles ikke. Innholdslinjer som bare består av ad-libs teller som linjer.
+- En flowblokk har `seksjon`, `fra`, `til` (inklusive), `stavelser` og valgfri
+  `toleranse` (standard 0). Blokker kan ikke overlappe. Ad-libs telles ikke i
+  stavelsesmålet. Uttale og stavelsestall er fortsatt heuristiske anslag.
+- Når planen inneholder flowblokker, erstatter disse den gamle sammenligningen
+  av stavelsestall mellom vers. Linjer utenfor blokkene får ingen flowkontroll;
+  de andre kontrollene beholdes.
+- En lås med `linjer` beskytter bestemte linjeposisjoner. Uten `linjer` låses
+  hele seksjonen, inkludert antall linjer. Seksjonsmerket låses i begge tilfeller.
+- Låser krever `--original`. Hver gjentakelse av et refreng må låses separat.
+  Teksten sammenlignes ordrett, inkludert store bokstaver, mellomrom, tegnsetting
+  og ad-libs. Blanke linjer og forskjellen mellom LF/CRLF ignoreres.
+- Låsene følger posisjon, ikke automatisk tekstgjenkjenning. Flytting eller
+  innsetting før en låst posisjon kan gi avvik. Verktøyet endrer ingen filer og
+  kontrollerer ikke faktapåstander semantisk.
+- Ugyldig plan eller lås uten gyldig original gir exitkode 2. Avvik rapporteres
+  med seksjons-/linjenummer. `--streng` gir exitkode 1 ved ethvert kontrollfunn;
+  uten flagget er funn rådgivende og exitkoden 0. JSON skrives også ved kode 1.
+
+GitHub Actions kjører hele testpakken med den innlagte ordlista på Python 3.10
+og 3.12 ved push og PR. Workflowen har bare lesetilgang og bruker ingen secrets.
 

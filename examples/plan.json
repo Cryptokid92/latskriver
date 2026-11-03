@@ -1,0 +1,11 @@
+{
+  "versjon": 1,
+  "flow": [
+    {"seksjon": 1, "fra": 1, "til": 4, "stavelser": 10, "toleranse": 1},
+    {"seksjon": 1, "fra": 5, "til": 8, "stavelser": 12, "toleranse": 1}
+  ],
+  "las": [
+    {"seksjon": 1, "linjer": [4, 8]},
+    {"seksjon": 2}
+  ]
+}
