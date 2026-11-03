@@ -1,18 +1,36 @@
-# rim-bm 2.5
+# rim-bm 2.6
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
 ## Installer
 
+Krever Python 3.10 eller nyere. Fra en utsjekking av repositoriet:
+
 ```bash
-unzip rim-bm-v2.2.zip
-cd rim-bm-v2.2
-./install.sh
+python3 dicts/rim-bm --versjon
+python3 dicts/rim-bm kald --vanlige -n 12
+python3 dicts/rim-bm --tekst lat.txt --sjekk --profil sang
 ```
 
-Krever Python 3.10 eller nyere og bash. Standardmål er `~/music-projects/dicts`, med lenke i `~/.local/bin/rim-bm`. Bruk `RIM_BM_HOME` og `RIM_BM_BIN` for andre mapper. Ikke pakk ut direkte i installasjonsmålet.
+Ingen installasjonsskript er nødvendig. Data finnes relativt til skriptet.
+`uttale.txt` er egne uttaleoverstyringer; behold denne ved oppgraderinger.
 
-Installasjonen bygger indeks og kjører standardtestene. Egne uttaler beholdes. Ved oppgradering fra 2.0 tas en kopi i `uttale.txt.før-2.1.bak`; uendrede kjente 2.0-standardoppføringer flyttes ut av brukerfila, mens egne ord og endringer beholdes. Standardene ligger nå i `uttale-standard.txt`, og `uttale.txt` brukes bare til egne overstyringer. En eksplisitt brukeroppføring går foran standarden.
+## Kontrollprofiler (2.6)
+
+`--profil sang` krever ikke rap i versmerkene. `--profil rap` krever rapmerker.
+`--profil hoggorm` er standard for bakoverkompatibilitet og bruker dessuten
+favorittarkivet til ad-lib-sammenligning. Generelle kontroller for rim, refreng,
+klisjeer og stemmemerker beholdes i alle profiler.
+
+Bare Hoggorm søker standardarkivet under `artists/Hoggorm/studio` relativt til
+foreldremappa til datamappa. Bruk `--fasit /sti/til/tekster` (kan gjentas) for
+å velge arkiv eksplisitt i alle profiler. Manglende arkiv gir ingen gjenbrukssjekk
+mot tidligere låter; «ingen funn» er derfor ikke bevis på originalitet.
+
+Pre-refreng regnes som egen seksjon. Gjentatte refreng må ha samme antall
+linjer og samme normaliserte hovedtekst; ad-libs, tegnsetting og store/små
+bokstaver sammenlignes fortsatt ikke. Låste linjer i omskrivingsprompten har
+strengere krav og skal sammenlignes ordrett.
 
 ## Kommandoer
 
@@ -105,4 +123,5 @@ Ordlista og frekvenslista er uendret fra den innsendte v2-pakken (600 400 ordfor
 - Norsk ordbank bokmål 2005, dump 2022-02-01, Nasjonalbiblioteket / Språkbanken / UiB. CC BY 4.0. https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-5/
 - FrequencyWords av Hermit Dave, OpenSubtitles 2018. CC BY-SA 4.0, som oppgitt i `frekvens/KILDE.md`.
 
-`lag-ordliste.py --dump fil.tar.gz` kan bygge ordlista fra en lokal originaldump. Uten `--dump` bruker det nettadressen dokumentert i skriptet. Endringene i 2.1 og 2.2 gjelder program, uttaledata, dokumentasjon og tester; de store datalistene er ikke bygget på nytt.
+`lag-ordliste.py --dump fil.tar.gz` kan bygge ordlista fra en lokal originaldump. Uten `--dump` laster skriptet ned Norsk ordbank-dumpen til `norsk-ordbank-bm/ordbank.tar.gz` og skriver `norsk-ordbank-bm/former-utf8.txt` på nytt. Dumpen er oppført i `.gitignore` og skal ikke committes; kjør `python3 lag-ordliste.py` for å hente og bygge den lokalt. Endringene i 2.1 og 2.2 gjelder program, uttaledata, dokumentasjon og tester; de store datalistene er ikke bygget på nytt i de versjonene.
+
