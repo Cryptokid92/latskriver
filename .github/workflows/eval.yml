@@ -1,0 +1,83 @@
+name: Evaluer Låtskriver
+
+# Kjører de faste briefene med både gammel og ny prompt, og sammenligner.
+# Krever hemmeligheten ANTHROPIC_API_KEY. Anslått kostnad: ti til femten dollar per kjøring (ikke målt ennå).
+on:
+  pull_request:
+    paths:
+      - "Låtskriver.md"
+      - "eval/briefer.json"
+      - "eval/rubrikk.md"
+  workflow_dispatch:
+    inputs:
+      grunnlinje:
+        description: "Git-ref for versjonen du sammenligner mot"
+        default: main
+      n:
+        description: "Tekster per brief"
+        default: "2"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GRUNNLINJE: ${{ github.event.pull_request.base.sha || inputs.grunnlinje || 'main' }}
+      N: ${{ inputs.n || '2' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Sjekk nøkkel
+        id: nokkel
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY mangler, hopper over evalueringen."
+            echo "har=nei" >> "$GITHUB_OUTPUT"
+          else
+            echo "har=ja" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Installer
+        if: steps.nokkel.outputs.har == 'ja'
+        run: pip install anthropic
+      - name: Gammel versjon
+        if: steps.nokkel.outputs.har == 'ja'
+        run: |
+          git show "$GRUNNLINJE:Låtskriver.md" > "$RUNNER_TEMP/grunnlinje.md"
+          python3 eval/evaluer.py kjor --navn grunnlinje --prompt "$RUNNER_TEMP/grunnlinje.md" -n "$N"
+      - name: Ny versjon
+        if: steps.nokkel.outputs.har == 'ja'
+        run: python3 eval/evaluer.py kjor --navn ny -n "$N"
+      - name: Sammenlign
+        if: steps.nokkel.outputs.har == 'ja'
+        run: |
+          python3 eval/evaluer.py sammenlign grunnlinje ny
+          cat eval/resultater/grunnlinje-mot-ny/rapport.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: steps.nokkel.outputs.har == 'ja'
+        with:
+          name: evaluering
+          path: eval/resultater/
+      - name: Kommenter på PR
+        if: steps.nokkel.outputs.har == 'ja' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            cat eval/resultater/grunnlinje-mot-ny/rapport.md
+            echo
+            echo "Alle tekster, poeng og blindtest-arket ligger i artefakten «evaluering» på [kjøringen]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+          } > "$RUNNER_TEMP/kommentar.md"
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/kommentar.md"

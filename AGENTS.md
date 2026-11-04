@@ -31,6 +31,12 @@ Kjør full suite med originaldata før merge. Ingen Suno-/lydtest er utført.
 Direkte Git-kloning feilet på proxyforbindelsen; GitHub-tilkoblingen kunne lese,
 men avviste opprettelse av gren med HTTP 403 (Resource not accessible by integration).
 
+## Evaluering
+Før en endring i `Låtskriver.md` regnes som en forbedring: kjør
+`python3 eval/evaluer.py kjor` for gammel og ny versjon og `sammenlign`
+(se `eval/README.md`). På GitHub gjør `eval.yml` dette automatisk på PR-er som
+endrer prompten. Offline-testene ligger i `eval/test_evaluer.py`.
+
 ## Neste arbeid
 1. Kjør full suite med komplett datasett og kontroller bakoverkompatibilitet.
 2. Innfør eksplisitte flowblokker før stavelseskontrollen strammes inn.
