@@ -103,93 +103,55 @@ class Metrikker(unittest.TestCase):
         self.assertFalse(ev.bestatt(m))
 
 
-class FalskKlient:
-    """Svarer som API-et, uten nettverk."""
-
-    def __init__(self, svar=SVAR, vinner="1"):
-        self.kall = []
-        svar_tekst, vinner_ = svar, vinner
-        kall = self.kall
-
-        class Strom:
-            def __init__(self, **kw):
-                kall.append(("stream", kw))
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
-            def get_final_message(self):
-                return NS(content=[NS(type="thinking", thinking=""), NS(type="text", text=svar_tekst)],
-                          stop_reason="end_turn", model=ev.MODELL, usage=NS(input_tokens=10, output_tokens=20))
-
-        def create(**kw):
-            kall.append(("create", kw))
-            skjema = kw["output_config"]["format"]["schema"]
-            if "vinner" in skjema["properties"]:
-                data = {"vinner": vinner_, "begrunnelse": "skarpere bilder"}
-            else:
-                data = {k: {"poeng": 4, "begrunnelse": "ok"} for k in ev.KRITERIER}
-                data["bilder"]["poeng"] = 9  # klemmes til 5
-                data["svakeste_linje"] = "Gå hvis du må"
-            return NS(content=[NS(type="text", text=json.dumps(data))], stop_reason="end_turn")
-
-        self.beta = NS(messages=NS(stream=Strom, create=create))
-
-
 class Kjoring(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        p = mock.patch.object(ev, "RESULTATER", Path(self.tmp.name))
+        self.rot = Path(self.tmp.name)
+        p = mock.patch.object(ev, "RESULTATER", self.rot)
         p.start()
         self.addCleanup(p.stop)
 
-    def kjor(self, *argv, klient):
-        with mock.patch.object(ev, "_klient", return_value=klient), \
-                contextlib.redirect_stdout(io.StringIO()) as ut, contextlib.redirect_stderr(io.StringIO()):
+    def kjor(self, *argv):
+        with contextlib.redirect_stdout(io.StringIO()) as ut:
             ev.main(list(argv))
         return ut.getvalue()
 
-    def test_kjor_og_sammenlign(self):
-        k = FalskKlient()
-        self.kjor("kjor", "--navn", "a", "-n", "1", "--briefer", "pop-lyset", "bare-refreng", klient=k)
-        rader = json.loads((Path(self.tmp.name) / "a" / "poeng.json").read_text(encoding="utf-8"))
-        self.assertEqual(len(rader), 2)
-        self.assertEqual(rader[0]["dommer"]["bilder"]["poeng"], 5)
-        self.assertEqual(rader[0]["dommer"]["snitt"], round((5 + 4 * 6) / 7, 2))
+    def lag(self, navn, svar=SVAR):
+        self.kjor("ny", "--navn", navn, "-n", "1")
+        for brief in ("pop-lyset", "bare-refreng"):
+            (self.rot / navn / "svar" / f"{brief}-1.md").write_text(svar, encoding="utf-8")
+        return self.kjor("poeng", "--navn", navn)
 
-        stream_kw = next(kw for t, kw in k.kall if t == "stream")
-        self.assertEqual(stream_kw["model"], "claude-opus-5-5")
-        self.assertEqual(stream_kw["thinking"], {"type": "adaptive"})
-        self.assertEqual(stream_kw["fallbacks"], "default")
-        self.assertTrue(stream_kw["system"][0]["text"].startswith("Du er en profesjonell låtskriver"))
+    def test_ny_lager_bestillinger(self):
+        self.kjor("ny", "--navn", "a", "-n", "2")
+        liste = (self.rot / "a" / "BESTILLINGER.md").read_text(encoding="utf-8")
+        self.assertIn("pop-lyset-2.md (mangler)", liste)
+        self.assertIn("Hun lar lyset stå og går", liste)
+        self.assertTrue((self.rot / "a" / "meta.json").exists())
 
-        # Ny kjøring gjenbruker eksisterende svar og genererer ikke på nytt.
-        k2 = FalskKlient()
-        self.kjor("kjor", "--navn", "a", "-n", "1", "--briefer", "pop-lyset", "--uten-dommer", klient=k2)
-        self.assertFalse([t for t, _ in k2.kall if t == "stream"])
+    def test_poeng_sammenlign_og_stemmer(self):
+        ut = self.lag("a")
+        self.assertIn("Mangler svar", ut)  # bare to av ti briefer har svar
+        rader = json.loads((self.rot / "a" / "poeng.json").read_text(encoding="utf-8"))
+        self.assertEqual({r["brief"] for r in rader}, {"pop-lyset", "bare-refreng"})
+        bare = next(r for r in rader if r["brief"] == "bare-refreng")
+        self.assertFalse(bare["bestatt"])  # svaret har vers
 
-        self.kjor("kjor", "--navn", "b", "-n", "1", "--briefer", "pop-lyset", "bare-refreng", klient=FalskKlient())
-        ut = self.kjor("sammenlign", "a", "b", klient=FalskKlient(vinner="2"))
-        self.assertIn("Blind parvis dom", ut)
-        mappe = Path(self.tmp.name) / "a-mot-b"
-        nokkel = json.loads((mappe / "nokkel.json").read_text(encoding="utf-8"))
-        parvis = json.loads((mappe / "parvis.json").read_text(encoding="utf-8"))
-        # Vinneren «2» skal oversettes til riktig versjon via nøkkelen.
-        for p, d in zip(nokkel, parvis):
-            self.assertEqual(d["vinner"], p["2"])
-        self.assertIn("Tekst 1", (mappe / "blind-ab.md").read_text(encoding="utf-8"))
+        self.lag("b", SVAR.replace("vindusglass", "glass"))
+        ut = self.kjor("sammenlign", "a", "b")
+        self.assertIn("2 par i blindtesten", ut)
 
-    def test_poeng_uten_dommer_beholder_gamle_dommerpoeng(self):
-        self.kjor("kjor", "--navn", "a", "-n", "1", "--briefer", "pop-lyset", klient=FalskKlient())
-        with mock.patch.object(ev, "_klient", side_effect=AssertionError("ingen API")), \
-                contextlib.redirect_stdout(io.StringIO()):
-            ev.main(["poeng", "--navn", "a", "--uten-dommer"])
-        rader = json.loads((Path(self.tmp.name) / "a" / "poeng.json").read_text(encoding="utf-8"))
-        self.assertIn("dommer", rader[0])
+        mappe = self.rot / "a-mot-b"
+        nokkel = {p["tekst"]: p for p in json.loads((mappe / "nokkel.json").read_text(encoding="utf-8"))}
+        ark = (mappe / "blind-ab.md").read_text(encoding="utf-8")
+        ark = ark.replace("Valg: ", "Valg: 2", 1)  # første par: tekst 2
+        (mappe / "blind-ab.md").write_text(ark, encoding="utf-8")
+        ut = self.kjor("stemmer", "a", "b")
+        forste = sorted(nokkel)[0]
+        vinner = nokkel[forste]["2"]
+        self.assertIn(f"| {forste} | {vinner} |", ut)
+        self.assertIn("Ikke besvart: " + sorted(nokkel)[1], ut)
 
 
 class Briefer(unittest.TestCase):

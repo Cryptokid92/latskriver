@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 """Evaluering av Låtskriver: blir tekstene bedre eller dårligere mellom versjoner?
 
-Tre lag:
-  1. Faste briefer (eval/briefer.json), samme for hver versjon.
-  2. Automatiske tall fra rim-bm (--sjekk --json) og enkle regelkontroller.
-  3. En LLM-dommer med fast rubrikk (eval/rubrikk.md), og blind parvis
-     sammenligning mellom to versjoner.
+Ingen API og ingen nøkkel. Tekstene lager du i Claude som vanlig, og
+skriptet måler dem og lager en blindtest.
 
-Bruk (fra prosjektroten):
-  python3 eval/evaluer.py kjor --navn v2.6                 # generer, mål og bedøm
-  python3 eval/evaluer.py kjor --navn ny --prompt annen.md  # en annen promptfil
-  python3 eval/evaluer.py poeng --navn v2.6 --uten-dommer   # mål på nytt, uten API
-  python3 eval/evaluer.py sammenlign v2.6 ny                # tabell + parvis dommer
-
-Generering og dommer krever ANTHROPIC_API_KEY (pip install anthropic).
-Tallene fra rim-bm og regelkontrollene virker uten nøkkel.
+  python3 eval/evaluer.py ny --navn v2.6          # lag mappe og bestillingsliste
+  (lim inn Låtskriver.md + hver brief i Claude, lagre svarene i svar/)
+  python3 eval/evaluer.py poeng --navn v2.6       # rim-bm-tall og harde krav
+  python3 eval/evaluer.py sammenlign v2.6 v2.7    # tabell + blind-ab.md
+  python3 eval/evaluer.py stemmer v2.6 v2.7       # tell stemmene dine fra blind-ab.md
 """
 from __future__ import annotations
 
@@ -29,8 +23,6 @@ import statistics
 import subprocess
 import sys
 import tempfile
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,19 +30,12 @@ EVAL = ROOT / "eval"
 RIM_BM = ROOT / "dicts" / "rim-bm"
 RESULTATER = EVAL / "resultater"
 
-MODELL = "claude-opus-5-5"
-DOMMER_MODELL = "claude-opus-5-5"
-FALLBACK_BETA = "server-side-fallback-2026-07-01"
-
-KRITERIER = ["bilder", "sprak", "krok", "rim", "rytme", "bestilling", "originalitet"]
 # Funn fra rim-bm --sjekk som teller som regelbrudd. Uttale og merker er
 # veiledende og varierer med profil, så de rapporteres hver for seg.
 BRUDD = {"gjentakelse", "vers", "refreng", "avkorting", "gjenbruk", "ekko"}
+# «ho» og «me» finnes også i bokmålstalemål, så de er ikke med.
 NYNORSK = {"ikkje", "eg", "kva", "korleis", "berre", "heime", "kvifor", "noko", "dykk",
-           "ho", "me", "frå", "eit", "ein", "mykje", "veit ikkje", "saman", "fekk"}
-# «ho» og «me» kan forekomme i talemål; de teller med, men vær obs.
-NYNORSK.discard("ho")
-NYNORSK.discard("me")
+           "frå", "eit", "ein", "mykje", "saman", "fekk"}
 
 SEKSJON = re.compile(r"^\s*\[[^\]]+\]\s*$")
 TELLING = re.compile(r"[\s(—–-]+\d{1,2}\)?\s*$")
@@ -172,104 +157,9 @@ def bestatt(m: dict) -> bool:
     return ok
 
 
-# ---------------------------------------------------------------- API
-
-def _klient():
-    try:
-        import anthropic
-    except ImportError:
-        sys.exit("Mangler pakken anthropic: pip install anthropic")
-    return anthropic.Anthropic()
-
-
-def generer(klient, system: str, brief: str, modell: str) -> dict:
-    with klient.beta.messages.stream(
-        model=modell,
-        max_tokens=64000,
-        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": brief}],
-        thinking={"type": "adaptive"},
-        output_config={"effort": "high"},
-        betas=[FALLBACK_BETA],
-        fallbacks="default",
-    ) as stream:
-        msg = stream.get_final_message()
-    tekst = "".join(b.text for b in msg.content if b.type == "text")
-    return {"svar": tekst, "stop": msg.stop_reason, "modell": msg.model,
-            "inn": msg.usage.input_tokens, "ut": msg.usage.output_tokens}
-
-
-def _json_kall(klient, system: str, bruker: str, skjema: dict, modell: str) -> dict | None:
-    msg = klient.beta.messages.create(
-        model=modell,
-        max_tokens=16000,
-        system=system,
-        messages=[{"role": "user", "content": bruker}],
-        thinking={"type": "adaptive"},
-        output_config={"effort": "high", "format": {"type": "json_schema", "schema": skjema}},
-        betas=[FALLBACK_BETA],
-        fallbacks="default",
-    )
-    if msg.stop_reason in ("refusal", "max_tokens"):
-        return None
-    tekst = next((b.text for b in msg.content if b.type == "text"), None)
-    return json.loads(tekst) if tekst else None
-
-
-def _rubrikk_skjema() -> dict:
-    kriterium = {
-        "type": "object",
-        "properties": {"poeng": {"type": "integer"}, "begrunnelse": {"type": "string"}},
-        "required": ["poeng", "begrunnelse"],
-        "additionalProperties": False,
-    }
-    return {
-        "type": "object",
-        "properties": {
-            **{k: kriterium for k in KRITERIER},
-            "svakeste_linje": {"type": "string"},
-        },
-        "required": [*KRITERIER, "svakeste_linje"],
-        "additionalProperties": False,
-    }
-
-
-def bedom(klient, brief: str, tekst: str, modell: str) -> dict | None:
-    rubrikk = (EVAL / "rubrikk.md").read_text(encoding="utf-8")
-    bruker = f"<bestilling>\n{brief}\n</bestilling>\n\n<tekst>\n{tekst}</tekst>"
-    svar = _json_kall(klient, rubrikk, bruker, _rubrikk_skjema(), modell)
-    if svar is None:
-        return None
-    for k in KRITERIER:
-        svar[k]["poeng"] = max(1, min(5, int(svar[k]["poeng"])))
-    svar["snitt"] = round(statistics.mean(svar[k]["poeng"] for k in KRITERIER), 2)
-    return svar
-
-
-PARVIS = """Du er en streng norsk låtskriver. Du får én bestilling og to sangtekster på bokmål, merket 1 og 2.
-Rekkefølgen er tilfeldig. Velg teksten du helst ville gitt videre til en artist, ut fra bilder,
-naturlig bokmål, krok, rim, rytme, hvor godt bestillingen følges og originalitet. Lengde er ikke en fordel i seg selv.
-Velg «uavgjort» bare når du virkelig ikke kan skille dem. Svar bare med JSON etter skjemaet."""
-
-PARVIS_SKJEMA = {
-    "type": "object",
-    "properties": {
-        "vinner": {"type": "string", "enum": ["1", "2", "uavgjort"]},
-        "begrunnelse": {"type": "string"},
-    },
-    "required": ["vinner", "begrunnelse"],
-    "additionalProperties": False,
-}
-
-
-def parvis(klient, brief: str, t1: str, t2: str, modell: str) -> dict | None:
-    bruker = f"<bestilling>\n{brief}\n</bestilling>\n\n<tekst_1>\n{t1}</tekst_1>\n\n<tekst_2>\n{t2}</tekst_2>"
-    return _json_kall(klient, PARVIS, bruker, PARVIS_SKJEMA, modell)
-
-
 # ---------------------------------------------------------------- kommandoer
 
-def last_briefer(ider: list[str] | None) -> list[dict]:
+def last_briefer(ider: list[str] | None = None) -> list[dict]:
     alle = json.loads((EVAL / "briefer.json").read_text(encoding="utf-8"))
     if ider:
         ukjente = set(ider) - {b["id"] for b in alle}
@@ -279,99 +169,67 @@ def last_briefer(ider: list[str] | None) -> list[dict]:
     return alle
 
 
-def _poeng_for(mappe: Path, briefer: list[dict], klient, dommer_modell: str | None,
-               parallelt: int, gamle: dict | None = None) -> list[dict]:
-    jobber = []
-    for b in briefer:
-        for svarfil in sorted((mappe / "svar").glob(f"{b['id']}-*.md")):
-            jobber.append((b, svarfil))
-
-    def en(jobb):
-        b, svarfil = jobb
-        i = int(svarfil.stem.rsplit("-", 1)[1])
-        svar = svarfil.read_text(encoding="utf-8")
-        tekst = finn_tekst(svar)
-        rad = {"brief": b["id"], "i": i, "tekst_funnet": tekst is not None}
-        if tekst is None:
-            return rad
-        (mappe / "tekster").mkdir(exist_ok=True)
-        (mappe / "tekster" / f"{b['id']}-{i}.txt").write_text(tekst, encoding="utf-8")
-        m = metrikker(kjor_rim_bm(tekst, b["profil"]), tekst, b)
-        rad["metrikker"] = m
-        rad["bestatt"] = bestatt(m)
-        forrige = (gamle or {}).get((b["id"], i))
-        if klient is not None and dommer_modell:
-            rad["dommer"] = bedom(klient, b["brief"], tekst, dommer_modell)
-        elif forrige and forrige.get("dommer"):
-            rad["dommer"] = forrige["dommer"]
-        return rad
-
-    with ThreadPoolExecutor(max_workers=parallelt) as ex:
-        return list(ex.map(en, jobber))
+def _vis(sti: Path) -> str:
+    return str(sti.relative_to(ROOT)) if sti.is_relative_to(ROOT) else str(sti)
 
 
-def kjor(args) -> None:
+def ny(args) -> None:
     prompt = Path(args.prompt).resolve()
-    system = systemprompt(prompt)
-    briefer = last_briefer(args.briefer)
     mappe = RESULTATER / args.navn
-    (mappe / "svar").mkdir(parents=True, exist_ok=True)
-    klient = _klient()
-
-    jobber = [(b, i) for b in briefer for i in range(1, args.n + 1)
-              if not (mappe / "svar" / f"{b['id']}-{i}.md").exists()]
-    forbruk = {"inn": 0, "ut": 0, "avvist": 0}
-    las = threading.Lock()
-
-    def en(jobb):
-        b, i = jobb
-        r = generer(klient, system, b["brief"], args.modell)
-        if r["stop"] == "refusal":
-            with las:
-                forbruk["avvist"] += 1
-            print(f"  {b['id']}-{i}: avvist av modellen", file=sys.stderr)
-            return
-        (mappe / "svar" / f"{b['id']}-{i}.md").write_text(r["svar"], encoding="utf-8")
-        with las:
-            forbruk["inn"] += r["inn"]
-            forbruk["ut"] += r["ut"]
-        print(f"  {b['id']}-{i}: {r['ut']} tokens ut", file=sys.stderr)
-
-    print(f"Genererer {len(jobber)} tekster med {args.modell} …", file=sys.stderr)
-    with ThreadPoolExecutor(max_workers=args.parallelt) as ex:
-        list(ex.map(en, jobber))
-
+    svar = mappe / "svar"
+    svar.mkdir(parents=True, exist_ok=True)
     meta = {
         "navn": args.navn,
-        "prompt": str(prompt.relative_to(ROOT)) if prompt.is_relative_to(ROOT) else str(prompt),
-        "prompt_sha256": hashlib.sha256(system.encode()).hexdigest()[:12],
-        "modell": args.modell,
-        "dommer_modell": None if args.uten_dommer else args.dommer_modell,
+        "prompt": _vis(prompt),
+        "prompt_sha256": hashlib.sha256(systemprompt(prompt).encode()).hexdigest()[:12],
         "n": args.n,
         "dato": dt.date.today().isoformat(),
-        "tokens": forbruk,
+        "modell": args.modell,
     }
     (mappe / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    _skriv_poeng(mappe, briefer, None if args.uten_dommer else klient, args.dommer_modell, args.parallelt)
+
+    ut = [f"# Bestillinger for {args.navn}", "",
+          f"Prompt: `{meta['prompt']}` (sha {meta['prompt_sha256']}).", "",
+          "For hver fil under: start en **ny** samtale i Claude, lim inn instruksjonen fra "
+          f"`{meta['prompt']}` (alt under streken), og send bestillingen som neste melding. "
+          f"Lim hele svaret inn i fila i `{_vis(svar)}/`. Bruk samme modell for alle tekstene.", ""]
+    for b in last_briefer():
+        for i in range(1, args.n + 1):
+            fil = svar / f"{b['id']}-{i}.md"
+            status = "ferdig" if fil.exists() and fil.read_text(encoding="utf-8").strip() else "mangler"
+            ut += [f"## {fil.name} ({status})", "", "```", b["brief"], "```", ""]
+    (mappe / "BESTILLINGER.md").write_text("\n".join(ut), encoding="utf-8")
+    print(f"Lagde {_vis(mappe / 'BESTILLINGER.md')}")
 
 
 def poeng(args) -> None:
     mappe = RESULTATER / args.navn
     if not (mappe / "svar").is_dir():
-        sys.exit(f"Fant ikke {mappe / 'svar'}")
-    klient = None if args.uten_dommer else _klient()
-    _skriv_poeng(mappe, last_briefer(args.briefer), klient, args.dommer_modell, args.parallelt)
-
-
-def _skriv_poeng(mappe: Path, briefer: list[dict], klient, dommer_modell: str, parallelt: int) -> None:
-    gamle = {}
-    if (mappe / "poeng.json").exists():
-        for r in json.loads((mappe / "poeng.json").read_text(encoding="utf-8")):
-            gamle[(r["brief"], r["i"])] = r
-    rader = _poeng_for(mappe, briefer, klient, dommer_modell if klient else None, parallelt, gamle)
+        sys.exit(f"Fant ikke {_vis(mappe / 'svar')}. Kjør «ny --navn {args.navn}» først.")
+    rader, mangler = [], []
+    for b in last_briefer():
+        filer = sorted((mappe / "svar").glob(f"{b['id']}-*.md"))
+        if not filer:
+            mangler.append(b["id"])
+        for svarfil in filer:
+            svar = svarfil.read_text(encoding="utf-8")
+            if not svar.strip():
+                mangler.append(svarfil.stem)
+                continue
+            i = int(svarfil.stem.rsplit("-", 1)[1])
+            tekst = finn_tekst(svar)
+            rad = {"brief": b["id"], "i": i, "tekst_funnet": tekst is not None}
+            if tekst is not None:
+                (mappe / "tekster").mkdir(exist_ok=True)
+                (mappe / "tekster" / f"{b['id']}-{i}.txt").write_text(tekst, encoding="utf-8")
+                m = metrikker(kjor_rim_bm(tekst, b["profil"]), tekst, b)
+                rad["metrikker"] = m
+                rad["bestatt"] = bestatt(m)
+            rader.append(rad)
     (mappe / "poeng.json").write_text(json.dumps(rader, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (mappe / "rapport.md").write_text(rapport(mappe.name, rader), encoding="utf-8")
-    print(rapport(mappe.name, rader))
+    tekst = rapport(args.navn, rader, mangler)
+    (mappe / "rapport.md").write_text(tekst, encoding="utf-8")
+    print(tekst)
 
 
 # ---------------------------------------------------------------- rapport
@@ -392,50 +250,58 @@ def sammendrag(rader: list[dict]) -> dict:
     for k, _, _ in TALL:
         verdier = [r["metrikker"][k] for r in ok]
         s[k] = round(statistics.mean(verdier), 3) if verdier else None
-    dommer = [r["dommer"] for r in ok if r.get("dommer")]
-    if dommer:
-        s["dommer_snitt"] = round(statistics.mean(d["snitt"] for d in dommer), 2)
-        s["dommer_sd"] = round(statistics.stdev(d["snitt"] for d in dommer), 2) if len(dommer) > 1 else 0.0
-        for k in KRITERIER:
-            s[f"dommer_{k}"] = round(statistics.mean(d[k]["poeng"] for d in dommer), 2)
     return s
 
 
-def rapport(navn: str, rader: list[dict]) -> str:
+def rapport(navn: str, rader: list[dict], mangler: list[str] | None = None) -> str:
     s = sammendrag(rader)
     ut = [f"# Evaluering: {navn}", "",
-          f"{s['tekster']} tekster, {s['bestatt']} besto de harde kravene, {s['uten_tekst']} uten funnet sangtekst.", "",
-          "| Mål | Verdi |", "|---|---|"]
+          f"{s['tekster']} tekster, {s['bestatt']} besto de harde kravene, {s['uten_tekst']} uten funnet sangtekst.", ""]
+    if mangler:
+        ut += [f"Mangler svar: {', '.join(mangler)}.", ""]
+    ut += ["| Mål | Verdi |", "|---|---|"]
     for k, vis, _ in TALL:
         ut.append(f"| {vis} | {s[k]} |")
-    if "dommer_snitt" in s:
-        ut.append(f"| **Dommer, snitt (1–5)** | **{s['dommer_snitt']}** ± {s['dommer_sd']} |")
-        for k in KRITERIER:
-            ut.append(f"| Dommer: {k} | {s[f'dommer_{k}']} |")
-    ut += ["", "## Per tekst", "", "| Tekst | Bestått | Rimandel | Brudd | Dommer | Svakeste linje |", "|---|---|---|---|---|---|"]
+    ut += ["", "## Per tekst", "", "| Tekst | Bestått | Rimandel | Brudd | Merknad |", "|---|---|---|---|---|"]
     for r in sorted(rader, key=lambda r: (r["brief"], r["i"])):
         if not r.get("tekst_funnet"):
-            ut.append(f"| {r['brief']}-{r['i']} | – | – | – | – | fant ingen sangtekst |")
+            ut.append(f"| {r['brief']}-{r['i']} | – | – | – | fant ingen sangtekst |")
             continue
-        m, d = r["metrikker"], r.get("dommer") or {}
-        svak = (d.get("svakeste_linje") or "").replace("|", "/").replace("\n", " ")
+        m = r["metrikker"]
+        merk = []
+        if m["ellipse"]:
+            merk.append("«...»")
+        if m["nynorsk"]:
+            merk.append(f"{m['nynorsk']} nynorskord")
+        if m["tall_i_linje"]:
+            merk.append("tall i linje")
+        if m.get("laste_bevart", 1.0) < 1.0:
+            merk.append(f"låste linjer bevart {m['laste_bevart']}")
+        if m.get("ingen_vers") is False:
+            merk.append("skrev vers")
         ut.append(f"| {r['brief']}-{r['i']} | {'ja' if r['bestatt'] else '**nei**'} | {m['rimandel']} "
-                  f"| {m['regelbrudd']} | {d.get('snitt', '–')} | {svak} |")
+                  f"| {m['regelbrudd']} | {', '.join(merk)} |")
     return "\n".join(ut) + "\n"
+
+
+def _sammenligningsmappe(a: str, b: str) -> Path:
+    return RESULTATER / f"{a}-mot-{b}"
 
 
 def sammenlign(args) -> None:
     a_mappe, b_mappe = RESULTATER / args.a, RESULTATER / args.b
-    ra = json.loads((a_mappe / "poeng.json").read_text(encoding="utf-8"))
-    rb = json.loads((b_mappe / "poeng.json").read_text(encoding="utf-8"))
-    sa, sb = sammendrag(ra), sammendrag(rb)
-    ut_mappe = RESULTATER / f"{args.a}-mot-{args.b}"
+    for m in (a_mappe, b_mappe):
+        if not (m / "poeng.json").exists():
+            sys.exit(f"Fant ikke {_vis(m / 'poeng.json')}. Kjør «poeng --navn {m.name}» først.")
+    sa = sammendrag(json.loads((a_mappe / "poeng.json").read_text(encoding="utf-8")))
+    sb = sammendrag(json.loads((b_mappe / "poeng.json").read_text(encoding="utf-8")))
+    ut_mappe = _sammenligningsmappe(args.a, args.b)
     ut_mappe.mkdir(parents=True, exist_ok=True)
 
     linjer = [f"# {args.a} mot {args.b}", "", f"| Mål | {args.a} | {args.b} | Endring |", "|---|---|---|---|"]
 
-    def rad(vis, ka, hoy):
-        va, vb = sa.get(ka), sb.get(ka)
+    def rad(vis, k, hoy):
+        va, vb = sa.get(k), sb.get(k)
         if va is None or vb is None:
             return
         diff = round(vb - va, 3)
@@ -445,29 +311,24 @@ def sammenlign(args) -> None:
     rad("Besto harde krav", "bestatt", True)
     for k, vis, hoy in TALL:
         rad(vis, k, hoy)
-    rad("**Dommer, snitt**", "dommer_snitt", True)
-    for k in KRITERIER:
-        rad(f"Dommer: {k}", f"dommer_{k}", True)
-    if "dommer_sd" in sa:
-        linjer += ["", f"Spredning i dommersnitt: ±{sa['dommer_sd']} og ±{sb['dommer_sd']}. "
-                   "En endring mindre enn dette er trolig støy."]
 
-    # Blind parvis: samme brief og nummer, tilfeldig rekkefølge.
+    # Blindtest: samme brief og nummer, tilfeldig rekkefølge, nøkkel i egen fil.
     tekster = {}
     for navn, mappe in ((args.a, a_mappe), (args.b, b_mappe)):
         for f in (mappe / "tekster").glob("*.txt"):
             tekster[(navn, f.stem)] = f.read_text(encoding="utf-8")
     felles = sorted({k for (n, k) in tekster if n == args.a} & {k for (n, k) in tekster if n == args.b})
-    briefer = {b["id"]: b for b in last_briefer(None)}
+    briefer = {b["id"]: b for b in last_briefer()}
     rng = random.Random(args.frø)
     par = []
     for stem in felles:
-        snu = rng.random() < 0.5
-        forst, sist = (args.b, args.a) if snu else (args.a, args.b)
+        forst, sist = (args.b, args.a) if rng.random() < 0.5 else (args.a, args.b)
         par.append({"tekst": stem, "1": forst, "2": sist})
 
-    # Ark for menneskelig blindtest + nøkkel.
-    ark = ["# Blind A/B", "", "Les begge og noter 1, 2 eller uavgjort per bestilling. Nøkkelen ligger i `nokkel.json`.", ""]
+    ark = ["# Blindtest", "",
+           "Les begge tekstene for hver bestilling og skriv 1, 2 eller = bak «Valg:». "
+           "Se `eval/rubrikk.md` for hva du kan se etter. Ikke åpne `nokkel.json` før du er ferdig. "
+           f"Tell opp med `python3 eval/evaluer.py stemmer {args.a} {args.b}`.", ""]
     for p in par:
         brief = briefer[p["tekst"].rsplit("-", 1)[0]]["brief"]
         ark += [f"## {p['tekst']}", "", "> " + brief.replace("\n", "\n> "), "",
@@ -476,34 +337,45 @@ def sammenlign(args) -> None:
     (ut_mappe / "blind-ab.md").write_text("\n".join(ark), encoding="utf-8")
     (ut_mappe / "nokkel.json").write_text(json.dumps(par, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    if not args.uten_dommer and par:
-        klient = _klient()
-
-        def en(p):
-            brief = briefer[p["tekst"].rsplit("-", 1)[0]]["brief"]
-            r = parvis(klient, brief, tekster[(p["1"], p["tekst"])], tekster[(p["2"], p["tekst"])], args.dommer_modell)
-            if r is None:
-                return None
-            return {"tekst": p["tekst"], "vinner": p[r["vinner"]] if r["vinner"] in ("1", "2") else "uavgjort",
-                    "begrunnelse": r["begrunnelse"]}
-
-        with ThreadPoolExecutor(max_workers=args.parallelt) as ex:
-            dommer = [d for d in ex.map(en, par) if d]
-        seire = {args.a: 0, args.b: 0, "uavgjort": 0}
-        for d in dommer:
-            seire[d["vinner"]] += 1
-        linjer += ["", "## Blind parvis dom", "",
-                   f"{args.b} vant {seire[args.b]}, {args.a} vant {seire[args.a]}, uavgjort {seire['uavgjort']} "
-                   f"(av {len(dommer)}).", "", "| Tekst | Vinner | Hvorfor |", "|---|---|---|"]
-        for d in sorted(dommer, key=lambda d: d["tekst"]):
-            linjer.append(f"| {d['tekst']} | {d['vinner']} | {d['begrunnelse'].replace('|', '/').replace(chr(10), ' ')} |")
-        (ut_mappe / "parvis.json").write_text(json.dumps(dommer, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    ark_sti = ut_mappe / "blind-ab.md"
-    vis = ark_sti.relative_to(ROOT) if ark_sti.is_relative_to(ROOT) else ark_sti
-    linjer += ["", f"Blindtest for deg selv: `{vis}`."]
+    linjer += ["", f"{len(par)} par i blindtesten: `{_vis(ut_mappe / 'blind-ab.md')}`."]
     tekst = "\n".join(linjer) + "\n"
     (ut_mappe / "rapport.md").write_text(tekst, encoding="utf-8")
+    print(tekst)
+
+
+VALG = re.compile(r"^## (\S+)\s*$|^Valg:\s*(\S*)", re.M)
+
+
+def stemmer(args) -> None:
+    mappe = _sammenligningsmappe(args.a, args.b)
+    nokkel = {p["tekst"]: p for p in json.loads((mappe / "nokkel.json").read_text(encoding="utf-8"))}
+    ark = (mappe / "blind-ab.md").read_text(encoding="utf-8")
+    telling = {args.a: 0, args.b: 0, "uavgjort": 0}
+    ubesvart, per_tekst, gjeldende = [], [], None
+    for overskrift, valg in VALG.findall(ark):
+        if overskrift:
+            gjeldende = overskrift
+            continue
+        if gjeldende not in nokkel:
+            continue
+        v = valg.strip().rstrip(".")
+        if v in ("1", "2"):
+            vinner = nokkel[gjeldende][v]
+        elif v in ("=", "uavgjort", "u"):
+            vinner = "uavgjort"
+        else:
+            ubesvart.append(gjeldende)
+            continue
+        telling[vinner] += 1
+        per_tekst.append((gjeldende, vinner))
+    svart = len(per_tekst)
+    ut = [f"# Dine stemmer: {args.a} mot {args.b}", "",
+          f"{args.b} vant {telling[args.b]}, {args.a} vant {telling[args.a]}, uavgjort {telling['uavgjort']} (av {svart}).", ""]
+    if ubesvart:
+        ut += [f"Ikke besvart: {', '.join(ubesvart)}.", ""]
+    ut += ["| Tekst | Vinner |", "|---|---|"] + [f"| {t} | {v} |" for t, v in per_tekst]
+    tekst = "\n".join(ut) + "\n"
+    (mappe / "stemmer.md").write_text(tekst, encoding="utf-8")
     print(tekst)
 
 
@@ -511,33 +383,27 @@ def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="kommando", required=True)
 
-    k = sub.add_parser("kjor", help="generer tekster, mål og bedøm")
-    k.add_argument("--navn", required=True, help="navn på kjøringen, for eksempel v2.6")
+    k = sub.add_parser("ny", help="lag mappe og bestillingsliste for en versjon")
+    k.add_argument("--navn", required=True, help="navn på versjonen, for eksempel v2.6")
     k.add_argument("--prompt", default=str(ROOT / "Låtskriver.md"))
     k.add_argument("-n", type=int, default=2, help="tekster per brief (standard 2)")
-    k.add_argument("--briefer", nargs="*", help="bare disse brief-id-ene")
-    k.add_argument("--modell", default=MODELL)
-    k.add_argument("--dommer-modell", default=DOMMER_MODELL)
-    k.add_argument("--uten-dommer", action="store_true")
-    k.add_argument("--parallelt", type=int, default=4)
-    k.set_defaults(fn=kjor)
+    k.add_argument("--modell", default="", help="hvilken Claude-modell du bruker, for notatet")
+    k.set_defaults(fn=ny)
 
-    q = sub.add_parser("poeng", help="mål eksisterende svar på nytt")
+    q = sub.add_parser("poeng", help="mål svarene med rim-bm og harde krav")
     q.add_argument("--navn", required=True)
-    q.add_argument("--briefer", nargs="*")
-    q.add_argument("--dommer-modell", default=DOMMER_MODELL)
-    q.add_argument("--uten-dommer", action="store_true", help="behold tidligere dommerpoeng, ingen API")
-    q.add_argument("--parallelt", type=int, default=4)
     q.set_defaults(fn=poeng)
 
-    s = sub.add_parser("sammenlign", help="sammenlign to kjøringer")
+    s = sub.add_parser("sammenlign", help="sammenlign to versjoner og lag blindtest")
     s.add_argument("a", help="gammel versjon")
     s.add_argument("b", help="ny versjon")
-    s.add_argument("--dommer-modell", default=DOMMER_MODELL)
-    s.add_argument("--uten-dommer", action="store_true")
     s.add_argument("--frø", type=int, default=1, help="frø for tilfeldig rekkefølge")
-    s.add_argument("--parallelt", type=int, default=4)
     s.set_defaults(fn=sammenlign)
+
+    t = sub.add_parser("stemmer", help="tell stemmene dine fra blind-ab.md")
+    t.add_argument("a")
+    t.add_argument("b")
+    t.set_defaults(fn=stemmer)
 
     args = p.parse_args(argv)
     args.fn(args)

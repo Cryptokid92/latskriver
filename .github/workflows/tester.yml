@@ -15,7 +15,5 @@ jobs:
           python-version: "3.12"
       - name: rim-bm
         run: python3 -m unittest discover -s dicts/tester
-      - name: Evalueringsverktøyet (offline, uten API)
-        run: |
-          pip install anthropic
-          python3 -m unittest discover -s eval
+      - name: Evalueringsverktøyet
+        run: python3 -m unittest discover -s eval

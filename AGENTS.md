@@ -32,10 +32,11 @@ Direkte Git-kloning feilet på proxyforbindelsen; GitHub-tilkoblingen kunne lese
 men avviste opprettelse av gren med HTTP 403 (Resource not accessible by integration).
 
 ## Evaluering
-Før en endring i `Låtskriver.md` regnes som en forbedring: kjør
-`python3 eval/evaluer.py kjor` for gammel og ny versjon og `sammenlign`
-(se `eval/README.md`). På GitHub gjør `eval.yml` dette automatisk på PR-er som
-endrer prompten. Offline-testene ligger i `eval/test_evaluer.py`.
+Før en endring i `Låtskriver.md` regnes som en forbedring: lag tekster til de
+faste briefene med gammel og ny versjon, kjør `poeng` og `sammenlign`, og la
+brukeren ta blindtesten (se `eval/README.md`). Ingen API-nøkkel: brukeren har
+valgt bort automatisk generering og LLM-dommer. Testene ligger i
+`eval/test_evaluer.py`.
 
 ## Neste arbeid
 1. Kjør full suite med komplett datasett og kontroller bakoverkompatibilitet.

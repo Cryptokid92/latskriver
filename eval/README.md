@@ -2,65 +2,55 @@
 
 Svarer på ett spørsmål: ble Låtskriver bedre eller dårligere av en endring?
 Testene i `dicts/tester` sjekker at rim-bm regner riktig. Dette sjekker tekstene
-som prompten faktisk gir.
+som prompten faktisk gir. Ingen API-nøkkel trengs.
 
 ## Slik virker det
 
 1. **Faste briefer** (`briefer.json`): ti bestillinger som dekker sang, rap,
    Hoggorm, refreng først, pre-refreng, blandet, norsk/engelsk, bare refreng og
    omskriving med låste linjer. Hver versjon skriver to tekster per brief.
-2. **Automatiske tall:** sangteksten (pass tre) hentes ut av svaret og kjøres
+2. **Tall fra rim-bm:** sangteksten (pass tre) hentes ut av svaret og kjøres
    gjennom `rim-bm --tekst --sjekk --json`. Vi måler rimandel, multi og innrim,
    regelbrudd, uttalefunn og nynorskord. Harde krav (ingen «...», ingen tall i
-   linjene, ingen nynorsk, låste linjer bevart, ingen vers når bare refreng er
+   linjene, ingen nynorsk, låste linjer bevart, ingen vers når bare refrenget er
    bestilt) gir *bestått* eller *ikke bestått*.
-3. **LLM-dommer:** gir 1–5 på sju kriterier i `rubrikk.md` (bilder, språk, krok,
-   rim, rytme, bestilling, originalitet) og peker ut svakeste linje.
-4. **Blind parvis dom:** ved sammenligning får dommeren gammel og ny tekst for
-   samme brief i tilfeldig rekkefølge og velger den beste. I tillegg lages
-   `blind-ab.md` til deg, med nøkkelen i en egen fil, så du kan stemme selv.
+3. **Din blindtest:** gammel og ny tekst for samme bestilling står side om side
+   i tilfeldig rekkefølge. Du velger, og skriptet teller opp etterpå.
 
-## Kjøre lokalt
+## Gangen
 
 ```bash
-pip install anthropic
-export ANTHROPIC_API_KEY=...
-python3 eval/evaluer.py kjor --navn v2.6
-# endre Låtskriver.md, så:
-python3 eval/evaluer.py kjor --navn v2.7
-python3 eval/evaluer.py sammenlign v2.6 v2.7
+# 1. Lag mappe og bestillingsliste for versjonen du har nå
+python3 eval/evaluer.py ny --navn v2.6
 ```
 
-Resultatet havner i `eval/resultater/<navn>/` (svar, tekster, `poeng.json`,
-`rapport.md`) og `eval/resultater/v2.6-mot-v2.7/rapport.md`. En kjøring som
-avbrytes, fortsetter der den slapp. `poeng --navn X --uten-dommer` måler
-eksisterende svar på nytt uten API, for eksempel etter en endring i rim-bm.
+Åpne `eval/resultater/v2.6/BESTILLINGER.md`. For hver fil: start en ny samtale i
+Claude, lim inn instruksjonen fra `Låtskriver.md` (alt under streken), send
+bestillingen og lim hele svaret inn i fila under `svar/`. Bruk samme modell hele
+veien.
 
-Nyttige valg: `--briefer rap-skryt rap-nattbuss` for et utvalg, `-n 3` for
-flere tekster per brief, `--prompt fil.md` for en annen promptfil.
+```bash
+# 2. Mål svarene
+python3 eval/evaluer.py poeng --navn v2.6
 
-## Automatisk på GitHub
+# 3. Gjør det samme etter endringen, så sammenlign
+python3 eval/evaluer.py ny --navn v2.7
+python3 eval/evaluer.py poeng --navn v2.7
+python3 eval/evaluer.py sammenlign v2.6 v2.7
 
-`.github/workflows/eval.yml` kjører når en PR endrer `Låtskriver.md`, briefene
-eller rubrikken. Den evaluerer prompten på PR-ens base og i PR-en, og legger
-sammenligningen som kommentar på PR-en. Alle tekster ligger i artefakten
-«evaluering». Den kan også startes for hånd under Actions, mot en valgfri ref.
+# 4. Fyll inn «Valg:» i blind-ab.md, så tell opp
+python3 eval/evaluer.py stemmer v2.6 v2.7
+```
 
-Krever hemmeligheten `ANTHROPIC_API_KEY` under *Settings → Secrets and
-variables → Actions*. Uten den hoppes evalueringen over med en advarsel.
+Resultatene ligger i `eval/resultater/`. Commit dem, så har du historikken.
+Når en versjon først er målt, trenger du bare å lage tekster til den nye.
 
 ## Lese resultatet
 
-- Modellen varierer fra kjøring til kjøring. Se på spredningen (±) ved
-  dommersnittet: en endring som er mindre enn den, er trolig støy.
-- Den blinde parvise dommen er det tydeligste signalet. Å vinne for eksempel
-  14 av 20 er et reelt løft, mens 11 av 20 ikke er det.
-- Rim-tallene måler håndverk, ikke kvalitet. Høyere rimandel er ikke bedre hvis
-  dommeren samtidig gir lavere poeng på språk.
-- Dommeren er en språkmodell med egne vaner. Din egen blindtest i `blind-ab.md`
-  er fasiten når de er uenige.
+- Blindtesten er det som teller. Å vinne for eksempel 14 av 20 er et reelt
+  løft, mens 11 av 20 ikke er det.
+- Rimtallene måler håndverk, ikke kvalitet. Bruk dem til å fange
+  tilbakeskritt, som flere regelbrudd eller låste linjer som ikke holdt.
+- Svarene varierer fra gang til gang. Derfor er det to tekster per brief.
 
-Modellene genererer uten verktøy, så tekstene får `Rim: usjekket`. Det er
-likt for alle versjoner og påvirker ikke sammenligningen.
-
-Offline-tester: `python3 -m unittest discover -s eval`.
+Tester: `python3 -m unittest discover -s eval`.
