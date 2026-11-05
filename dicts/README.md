@@ -110,7 +110,7 @@ De leverte standarduttalene følger alltid skriptet. `--wordlist`, `--uttale` og
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tester -v
 ```
 
-85 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
+92 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
 
 ## Gjenværende begrensninger
 
