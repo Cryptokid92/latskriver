@@ -98,6 +98,14 @@ Kjørt lokalt med Python 3.14.8. Python 3.10-syntaks og workflow-YAML er
 kontrollert. CI er konfigurert for 3.10 og 3.14 i `.github/workflows/tests.yml`,
 men GitHub-kjøring er ikke utført her. Ingen Suno-/lydtest er utført.
 
+## Evaluering
+Før en endring i `Låtskriver.md` regnes som en forbedring: lag tekster til de
+faste briefene med gammel og ny versjon, kjør `poeng` og `sammenlign`, og la
+brukeren ta blindtesten (se `eval/README.md`). Ingen API-nøkkel: brukeren har
+valgt bort automatisk generering og LLM-dommer. Testene ligger i
+`eval/test_evaluer.py` og kjøres i samme CI-jobb som rim-bm
+(`.github/workflows/tests.yml`, Python 3.10 og 3.14).
+
 ## Neste arbeid
 1. Behold full suite med komplett datasett som regresjonskontroll ved nye endringer.
 2. Innfør eksplisitte flowblokker før stavelseskontrollen strammes inn.

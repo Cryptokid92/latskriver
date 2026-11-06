@@ -1,0 +1,67 @@
+[
+  {
+    "id": "pop-lyset",
+    "profil": "sang",
+    "brief": "Mørk pop, kvinnelig alt, nitti BPM. Hun lar lyset stå og går. Bokmål. To vers og sunget refreng."
+  },
+  {
+    "id": "rap-skryt",
+    "profil": "rap",
+    "brief": "Norsk fest-rap, mannlig vokal, nittito BPM. En lokal skrytepave som også kan le av seg selv. To vers på seksten bars og en kort hook."
+  },
+  {
+    "id": "ballade-baten",
+    "profil": "sang",
+    "brief": "Akustisk ballade, mannlig vokal, sytti BPM. Far og sønn pusser opp en gammel trebåt den siste sommeren før sønnen flytter. Form A med pre-refreng."
+  },
+  {
+    "id": "pop-refreng-forst",
+    "profil": "sang",
+    "brief": "Energisk pop, hundre og tjue BPM, form B med refrenget først. Første dag av sommerferien i en liten kystby."
+  },
+  {
+    "id": "rap-nattbuss",
+    "profil": "rap",
+    "brief": "Alvorlig norsk rap, åttiåtte BPM. Nattbuss hjem fra kveldsskift i Oslo, tanker om penger og drømmer som ble lagt bort. To vers på seksten bars og en hook."
+  },
+  {
+    "id": "blandet-bryllup",
+    "profil": "sang",
+    "brief": "Blandet: rappede vers og sunget refreng, nittifem BPM. To venner som har vokst fra hverandre møtes igjen i et bryllup."
+  },
+  {
+    "id": "hoggorm-havna",
+    "profil": "hoggorm",
+    "brief": "Til Hoggorm. Melodisk drill, hundre og førti BPM. Vinternatt i Havna, gamle venner som fortsatt holder sammen."
+  },
+  {
+    "id": "omskriv-vers-to",
+    "profil": "sang",
+    "brief": "Skriv om vers to. Behold linje fire i vers to ordrett, og lås alle refreng. Ikke endre vers én.\n\n[Verse 1]\nKaffen står og damper på et kjøkken uten lyd\nDu har pakka alt du eier i en bag fra Ikea\nJeg later som jeg leser mens du teller over pass\nOg regnet tegner striper på det skitne vindusglass\n\n[Chorus]\nGå hvis du må\nJeg holder døra på gløtt\nGå hvis du må\nMen ikke si at du er trøtt\n\n[Verse 2]\nHjertet mitt er knust som glass på et gulv\nKjærligheten var en drøm som ble borte i et kulv\nJeg står her helt alene i den store kalde natt\nOg tenker på den gangen da du sang og du lo\n\n[Chorus]\nGå hvis du må\nJeg holder døra på gløtt\nGå hvis du må\nMen ikke si at du er trøtt",
+    "laste_linjer": [
+      "Og tenker på den gangen da du sang og du lo",
+      "Gå hvis du må",
+      "Jeg holder døra på gløtt",
+      "Men ikke si at du er trøtt",
+      "Kaffen står og damper på et kjøkken uten lyd",
+      "Du har pakka alt du eier i en bag fra Ikea",
+      "Jeg later som jeg leser mens du teller over pass",
+      "Og regnet tegner striper på det skitne vindusglass"
+    ],
+    "fjernes": [
+      "Hjertet mitt er knust som glass på et gulv",
+      "Kjærligheten var en drøm som ble borte i et kulv"
+    ]
+  },
+  {
+    "id": "bare-refreng",
+    "profil": "sang",
+    "brief": "Skriv bare refrenget. Countrypop, hundre BPM, kvinnelig vokal. Tittel: Ingen vei tilbake.",
+    "ingen_vers": true
+  },
+  {
+    "id": "pop-norsk-engelsk",
+    "profil": "sang",
+    "brief": "Norsk pop med noen engelske ord i kroken, hundre og ti BPM. Forelskelse på en sommerfestival som ender når festivalen stenger."
+  }
+]

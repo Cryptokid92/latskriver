@@ -4,6 +4,7 @@ Norsk låtskriverprompt og rimverktøy for bokmål.
 
 - Bruk [Låtskriver.md](Låtskriver.md) som instruksjon til en språkmodell.
 - Se [dicts/README.md](dicts/README.md) for Python-verktøyet og kontrollprofiler.
+- Se [eval/README.md](eval/README.md) for å måle om en endring gjør tekstene bedre.
 - Se [AGENTS.md](AGENTS.md) for beslutninger, verifikasjon og videre arbeid.
 
 Krever Python 3.10 eller nyere:
