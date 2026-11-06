@@ -61,6 +61,10 @@ Diverse ferdige tekster (mcp_test / øvrig).
 - [litt_av_det.txt](diverse/litt_av_det.txt)
 - [overste_plassen.txt](diverse/overste_plassen.txt)
 
+### `suno/` (241 unike tekstsett)
+
+Eksport fra Nikolai sitt bibliotek på suno.com. Flere Create-versjoner med samme tekst er slått sammen til én fil. Tekstene er lagret slik de kom ut av eksporten. Full indeks (titler, filer og clip-id-er) ligger i [suno/README.md](suno/README.md).
+
 ## Hoppet over
 
 - Strofe-status `utkast` (130 sanger) – ikke ferdigstilte.
