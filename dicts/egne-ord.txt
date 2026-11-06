@@ -18,6 +18,7 @@ moss
 # Engelsk slang, norsk uttale
 cash kæsj
 flash flæsj
+way wæi
 stash stæsj
 splash splæsj
 smash smæsj

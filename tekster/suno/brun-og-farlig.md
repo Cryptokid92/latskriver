@@ -1,0 +1,94 @@
+---
+title: "Brun og farlig"
+suno_ids: ["fa2c5348-cafd-425c-b8d6-d293dbde5d49", "26ec55d3-baf7-4dca-a02a-8a82283948ae"]
+suno_urls: ["https://suno.com/song/fa2c5348-cafd-425c-b8d6-d293dbde5d49", "https://suno.com/song/26ec55d3-baf7-4dca-a02a-8a82283948ae"]
+style: "Aggressive Festival Trap, Neon Mountain After Dark Mood, 132 Bpm, G Minor, Male Vocals, Whispered Intro And Outro, Cocky Low Rap Verses, Autotuned Sung Hook With Call And Response, Falsetto Bridge, Belted Final Hook, Neon Synth Whistle Lead, Distorted Guitar Stabs, Heavy Marching Kick, Snare Rolls, Long Gliding 808, Dry Upfront Vocals, Clear Norwegian Diction"
+created_at: "2026-11-05T05:50:25.598Z"
+clip_count_in_library: 2
+---
+
+[Intro - whispered, close]
+Brun (shh)
+Farlig (mmm)
+
+[Hook - sung, autotune, call and response]
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Festival under fjellet, neonbånd på armen (ah)
+Hun går fra typen sin og rett inn i varmen (varmen)
+
+[Verse 1 - rap, low register, cocky dirty flow]
+Jeg ser henne ved baren, glitter på kinnet som pynt (shh)
+Hun ser på meg en gang, og da har det begynt (begynt)
+Typen hennes er stor, men han er ingen fare (mmm)
+Hun vet at han ikke kommer til å klare (klare)
+Hun går forbi meg, og hun slipper en lapp (ah)
+Med nummeret på baksida, og typen hennes er slapp (slapp)
+Gull (ah)
+Hud (mmm)
+Neon (shh)
+Gud (gud)
+Bak scenen er det mørkt, og generatoren durer (mmm)
+Hun lener seg mot gjerdet, hun vet at typen lurer (lurer)
+Hun drar meg bak en container, bassen slår gjennom stålet (ah)
+Hun biter i skuldra mi, og huden brenner mer enn bålet (bålet)
+Typen hennes ringer, og skjermen lyser opp (mmm)
+Hun slår den av og sier: «Ikke stopp» (stopp)
+
+[Hook - sung, autotune, call and response]
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Festival under fjellet, neonbånd på armen (ah)
+Hun går fra typen sin og rett inn i varmen (varmen)
+
+[Verse 2 - rap, faster flow, breathy]
+Hun går tilbake til typen og kysser ham på munnen (ah)
+Han smaker meg, men han skjønner ikke grunnen (grunnen)
+Resten av kvelden danser hun med ham (mmm)
+Men hun ser over skuldra på meg uten skam (skam)
+Gull (ah)
+Blikk (mmm)
+Røyk (shh)
+Drikk (drikk)
+Når festivalen stenger, ligger typen hennes i gresset (ah)
+Hun står ved bilen min, og hun ser ikke stresset (stresset)
+Hun setter seg inn med beina opp på dashbordet (mmm)
+Hun sier jeg kan kjøre hvor jeg vil, hun gir meg ordet (ordet)
+Hun er brun og farlig, men jeg var her først (ah)
+Hun tror at hun valgte, men hun var bare tørst (tørst)
+
+[Bridge - falsett, soft, fading vocals]
+Farlig (ah)
+Natt (mmm)
+Brun (shh)
+Glatt (glatt)
+
+[Hook - sung, belting, harmonies]
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Brun og farlig (ah)
+Hun bytter side (side)
+Brun og farlig (mmm)
+Typen hennes må lide (lide)
+Festival under fjellet, neonbånd på armen (ah)
+Hun går fra typen sin og rett inn i varmen (varmen)
+
+[Outro - whispered]
+Brun og farlig (shh)
+Byttet side (mmm)
+
+[End]

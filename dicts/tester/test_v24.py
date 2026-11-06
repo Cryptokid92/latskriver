@@ -91,7 +91,7 @@ class Sjekk(unittest.TestCase):
 
     def test_uttale(self):
         m = self.msgs("uttale")
-        self.assertIn("HÅN", m)
+        self.assertNotIn("HÅN", m)  # profilens eksplisitt tillatte skrivemåte
         self.assertIn("«B»", m)
         self.assertIn("rain", m)  # «make» finnes i ordbanken (en make)
 

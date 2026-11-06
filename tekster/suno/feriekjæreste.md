@@ -1,0 +1,96 @@
+---
+title: "Feriekjæreste"
+suno_ids: ["1a832a13-c53e-4e40-af84-fa7966baf161", "5afbd4c2-a72a-4622-90f0-8a539c97e929"]
+suno_urls: ["https://suno.com/song/1a832a13-c53e-4e40-af84-fa7966baf161", "https://suno.com/song/5afbd4c2-a72a-4622-90f0-8a539c97e929"]
+style: "Sunset Campfire Melodic Trap, Cocky Carefree Summer Fling Mood, 94 Bpm, Ab Major, Male Vocals, Whispered Intro And Outro, Cocky Low Rap Verses, Autotuned Sung Hook With Call And Response, Falsetto Bridge, Belted Final Hook, Kalimba Lead Melody, Warm Wurlitzer Chords, Swung Lo-Fi Drums, Crackling Fire Texture, Round Soft 808, Dry Upfront Vocals, Clear Norwegian Diction"
+created_at: "2026-11-04T21:25:47.753Z"
+clip_count_in_library: 2
+---
+
+[Intro - whispered, close]
+To uker (shh)
+Ingen løfter (mmm)
+
+[Hook - sung, autotune, call and response]
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Hun tar flyet hjem til Bergen den siste dagen (ah)
+Til da er hun min, med sand på magen (magen)
+
+[Verse 1 - rap, low register, cocky dirty flow]
+Hun står ved kiosken og spør om jeg har fyr (shh)
+Hun sier at hun er her for å lage styr (styr)
+Hun er fra Bergen, du hører det med en gang (mmm)
+Hun går i en hvit bikini som er altfor trang (trang)
+Jeg sier jeg ringer aldri når ferien er slutt (ah)
+Hun sier det passer, hun er ikke ute etter en gutt (gutt)
+Natt (ah)
+Bål (mmm)
+Gnister (shh)
+Skål (skål)
+Vi sitter ved bålet til de andre har gått (mmm)
+Hun drar meg inn i teltet, og det blir rått (rått)
+Teltduken rister, hun holder for munnen (ah)
+Det knaker i hele teltet, helt ned i bunnen (bunnen)
+Neste morgen ler hun med venninna i solen (mmm)
+Hun forteller alt med sanden fortsatt på kjolen (kjolen)
+
+[Hook - sung, autotune, call and response]
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Hun tar flyet hjem til Bergen den siste dagen (ah)
+Til da er hun min, med sand på magen (magen)
+
+[Verse 2 - rap, faster flow, breathy]
+Andre uka kommer hun uten å spørre (ah)
+Hun ligger i hengekøya mi, og hun vil ha noe større (større)
+Hun spør hva vi er, jeg sier sommer (mmm)
+Hun sier at det holder, hun vet hva som kommer (kommer)
+Billett (ah)
+Fly (mmm)
+Siste natt (shh)
+Ingen sky (sky)
+Den siste natta vil hun ikke sove (ah)
+Hun ber meg om å ringe, men jeg nekter å love (love)
+Vi ender ved vannet, langt fra lyset, i skyggen (mmm)
+Hun klorer meg nedover hele ryggen (ryggen)
+Om morgenen står hun med sekken ved bommen (ah)
+Hun gir meg nummeret sitt, jeg krøller det i lommen (lommen)
+Taxien svinger ut, hun ser meg i bakruta (mmm)
+Jeg går tilbake, og hun har lagt igjen lukta på puta (puta)
+
+[Bridge - falsett, soft, fading vocals]
+Bare sommer (ah)
+Nå (mmm)
+Ingen løfter (shh)
+Bare gå (gå)
+
+[Hook - sung, belting, harmonies]
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Feriekjæreste (ah)
+Ingen løfter her (her)
+Feriekjæreste (mmm)
+Hun vet hvem jeg er (er)
+Hun tar flyet hjem til Bergen den siste dagen (ah)
+Til da er hun min, med sand på magen (magen)
+
+[Outro - whispered]
+Feriekjæreste (shh)
+Vi ses (mmm)
+
+[End]

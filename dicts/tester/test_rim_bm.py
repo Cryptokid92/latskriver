@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.machinery
+import atexit
 import importlib.util
 import io
 import json
@@ -28,6 +29,9 @@ UTTALE = Path(os.environ.get("RIM_BM_UTTALE", rb.UTTALE))
 FREKVENS = Path(os.environ.get("RIM_BM_FREKVENS", rb.FREKVENS))
 # Testene bruker ikke den personlige egne-ord.txt, så nye ord der ikke endrer fasiten.
 rb.EGNE = HERE / "ingen-egne-ord.txt"
+_TEST_CACHE = tempfile.TemporaryDirectory(prefix="rim-bm-tests-")
+atexit.register(_TEST_CACHE.cleanup)
+rb.CACHE_DIR = Path(_TEST_CACHE.name)
 DATA = rb.Data(WORDLIST, UTTALE, FREKVENS, skrift=False)
 
 

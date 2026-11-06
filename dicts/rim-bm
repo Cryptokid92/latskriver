@@ -10,6 +10,7 @@ Bruk:
   rim-bm --par gata data         rent rim; multi når nøkkelen har to eller flere vokalkjerner
   rim-bm --tekst låt.txt         rimpar, rimskjema, stavelser, multi, flerord og innrim
   rim-bm --tekst låt.txt --sjekk låtsjekk: gjenbruk, gjentakelser, merker, hook, uttale
+  rim-bm --krok "linje" "linje"  krokverksted: stavelser, sluttrim, klisjé, brukt før
   rim-bm --info gatene           lydform, trykk, nøkkel og stavelser for et ord
   rim-bm kald --skrift           som v1: sammenlign stavemåte, ikke uttale
 
@@ -34,7 +35,8 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
 
-VERSION = "2.6.0"
+VERSION = "2.7.0"
+SOURCE_HASH = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 # --------------------------------------------------------------------------- stier
@@ -45,10 +47,7 @@ def _env_path(name: str, default: Path) -> Path:
 
 
 def _default_home() -> Path:
-    here = Path(__file__).resolve().parent
-    if (here / "norsk-ordbank-bm").is_dir():
-        return here
-    return Path.home() / "music-projects" / "dicts"
+    return Path(__file__).resolve().parent
 
 
 HOME_DIR = _env_path("RIM_BM_HOME", _default_home())
@@ -71,7 +70,7 @@ ACCENTS = str.maketrans({
     "è": "é", "ê": "é", "ó": "o", "ò": "o", "ô": "o",
     "á": "a", "à": "a", "ü": "y", "ä": "æ", "ö": "ø",
 })
-NOT_LETTER = re.compile(r"[^a-zæøåé']")      # ord du skriver inn
+NOT_LETTER = re.compile(r"[^a-zæøåé]")       # apostrof i ord er ikke et trykkmerke
 NOT_LYD = re.compile(r"[^a-zæøåé'.]")        # lydformer i uttalefila: punktum skiller kjerner
 
 INFL = r"(?:e|er|en|et|ene|a|es|ens|ers|ets)?$"
@@ -425,10 +424,10 @@ class Data:
         return freq
 
     def _signature(self) -> str:
-        parts = [VERSION, "skrift" if self.skrift else "uttale", str(self.wordlist)]
+        parts = [VERSION, SOURCE_HASH, "skrift" if self.skrift else "uttale", str(self.wordlist.resolve())]
         for p in (self.wordlist, STANDARD, self.uttale_path, self.egne_path):
             st = p.stat() if p.is_file() else None
-            parts.append(f"{p}:{st.st_mtime_ns}:{st.st_size}" if st else f"{p}:-")
+            parts.append(f"{p.resolve()}:{st.st_mtime_ns}:{st.st_size}" if st else f"{p.resolve()}:-")
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:16]
 
     def _load_index(self, use_cache: bool):
@@ -494,17 +493,23 @@ class Data:
         return pre in self.wordset or (len(pre) > 2 and pre[-1] in "se" and pre[:-1] in self.wordset)
 
     def rhymes(self, query: str, *, stav=None, limit=40, skjevt=False, filt=True, vanlige=False, assonans=False):
+        info, groups, _ = self._rhymes(query, stav=stav, limit=limit, skjevt=skjevt,
+                                       filt=filt, vanlige=vanlige, use_assonans=assonans)
+        return info, groups
+
+    def _rhymes(self, query: str, *, stav=None, limit=40, skjevt=False, filt=True, vanlige=False, use_assonans=False):
         qi = self.info(query)
         q = clean(query).replace("'", "")
         own_keys = {v.nokkel for v in self.infos(query)}
         score: dict[str, float] = {}
-        if assonans:
+        if use_assonans:
             for k in self.index:
                 if k not in own_keys:
-                    best = max(globals()["assonans"](o, k) for o in own_keys)
+                    best = max(assonans(o, k) for o in own_keys)
                     if best >= ASSONANS_MIN:
                         score[k] = best
-            keys = sorted(score)
+            # Besøk beste variant først før ord dedupliseres.
+            keys = sorted(score, key=lambda k: (-score[k], k))
         elif skjevt:
             keys = sorted({k for key in own_keys for k in self.skjevt_keys(key)})
         else:
@@ -532,14 +537,23 @@ class Data:
         for s in sorted(groups):
             ws = sorted(groups[s], key=lambda x: (-word_score[x], self.freq.get(x, inf), len(x), x))
             out[s] = ws[:limit]
-        return qi, out
+        return qi, out, {w: word_score[w] for ws in out.values() for w in ws}
+
+    def search_result(self, query: str, *, skjevt=False, assonans=False, **kwargs) -> dict:
+        info, groups, scores = self._rhymes(query, skjevt=skjevt, use_assonans=assonans, **kwargs)
+        result = {"ord": asdict(info), "varianter": [asdict(v) for v in self.infos(query)],
+                  "skjevt": skjevt, "sokemodus": "assonans" if assonans else ("skjevt" if skjevt else "rim"),
+                  "grupper": {str(k): v for k, v in groups.items()}}
+        if assonans:
+            result["assonans_score"] = scores
+        return result
 
 
 # --------------------------------------------------------------------------- --par
 
-def check_pair(data: Data, a: str, b: str) -> dict:
+def check_pair(data: Data, a: str, b: str, *, first_variant: bool = False) -> dict:
     va, vb = data.infos(a), data.infos(b)
-    combos = [(x, y) for x in va for y in vb]
+    combos = [(va[0], vb[0])] if first_variant else [(x, y) for x in va for y in vb]
     exact = [(x, y) for x, y in combos if x.nokkel == y.nokkel]
     near = [(x, y) for x, y in combos if skjevt_key(x.nokkel) == skjevt_key(y.nokkel)]
     ia, ib = (exact or near or combos)[0]
@@ -549,6 +563,7 @@ def check_pair(data: Data, a: str, b: str) -> dict:
     return {
         "a": a, "b": b,
         "varianter": [[asdict(v) for v in va], [asdict(v) for v in vb]],
+        "uttalevalg": "forste" if first_variant else "alle",
         "metode": [ia.metode, ib.metode],
         "usikker": True,
         "samme_ord": same,
@@ -577,7 +592,7 @@ def format_pair(r: dict) -> str:
     if r["lyd"] != [clean(a), clean(b)]:
         line += f" (lyd «{r['lyd'][0]}» / «{r['lyd'][1]}»)"
     if any(len(v) > 1 for v in r["varianter"]):
-        line += " · variantavhengig; sjekk planlagt uttale"
+        line += " · første uttalevariant brukt" if r.get("uttalevalg") == "forste" else " · variantavhengig; sjekk planlagt uttale"
     if r["skrift_treff"] != r["treff"]:
         line += f" · på skrift: {'treff' if r['skrift_treff'] else 'ikke treff'}"
     return line
@@ -585,7 +600,8 @@ def format_pair(r: dict) -> str:
 
 # --------------------------------------------------------------------------- --tekst
 
-TOKEN = re.compile(r"[A-Za-zÆØÅæøåÉéÈèÊêÓóÒòÔôÜüÄäÖö']+")
+LETTERS = r"A-Za-zÆØÅæøåÉéÈèÊêÓóÒòÔôÜüÄäÖö"
+TOKEN = re.compile(rf"[{LETTERS}]+(?:['’‘ʼ][{LETTERS}]+)*")
 ADLIB = re.compile(r"\([^)]*\)")
 DIGIT = re.compile(r"\d")
 
@@ -629,7 +645,7 @@ def analyse_text(data: Data, text: str) -> dict:
         if not line:
             continue
         if line.startswith("[") and line.endswith("]"):
-            if cur["linjer"]:
+            if cur["navn"] or cur["linjer"]:
                 sections.append(cur)
             cur = {"navn": line, "linjer": []}
             continue
@@ -651,7 +667,7 @@ def analyse_text(data: Data, text: str) -> dict:
             "sluttord": end, "nokkel": info.nokkel,
             "ord": tokens, "innrim": _innrim(data, tokens),
         })
-    if cur["linjer"]:
+    if cur["navn"] or cur["linjer"]:
         sections.append(cur)
 
     pairs: dict[tuple[str, str], dict] = {}
@@ -685,7 +701,8 @@ def analyse_text(data: Data, text: str) -> dict:
                 if not same:
                     k = tuple(sorted((clean(partner["sluttord"]), clean(ln["sluttord"]))))
                     if k not in pairs:
-                        pairs[k] = check_pair(data, partner["sluttord"].lower(), ln["sluttord"].lower())
+                        pairs[k] = check_pair(data, partner["sluttord"].lower(), ln["sluttord"].lower(),
+                                              first_variant=True)
             else:
                 ln["bokstav"] = chr(ord("A") + next_letter % 26)
                 next_letter += 1
@@ -763,17 +780,26 @@ INSTRUMENTER = ("sax", "saxofon", "piano", "gitar", "guitar", "strings", "synth"
 STEMME_NEI = ("falsetto", "falsett", "belting", "anthemic")
 PRODUKSJON = ("autotune", "auto-tune", "reverb", "delay", "fading", "distortion", "sidechain", "harmony", "harmonies")
 CODE_FENCE = re.compile(r"```[^\n]*\n(.*?)```", re.S)
+# Profilbestemt skrivemåte, ikke en garanti for Sunos uttale.
+HOGGORM_STORE_ORD = frozenset({"HÅN"})
 
 
 def _seksjon_type(navn: str) -> str:
-    n = navn.strip("[]").lower()
-    if re.match(r"^(?:pre[ -]?chorus|pre[ -]?refreng|førrefreng)\b", n):
+    n = re.sub(r"[‐‑‒–—−]", "-", navn.strip("[]").strip().lower())
+    if re.match(r"^(?:pre[\s-]*(?:chorus|refreng|hook)|før[\s-]*refreng)\b", n):
         return "pre"
-    if any(k in n for k in ("hook", "chorus", "refreng")):
+    if re.match(r"^(?:post[\s-]*(?:chorus|refreng|hook)|etter[\s-]*refreng)\b", n):
+        return "post"
+    if re.match(r"^(?:hook|chorus|refreng)(?=\W|\d|$)", n):
         return "hook"
-    if n.startswith(("verse", "vers")):
+    if re.match(r"^(?:verse|vers)(?=\W|\d|$)", n):
         return "verse"
     return "annet"
+
+
+def _rent_versmerke(navn: str) -> bool:
+    """[Verse 1], [Verse], [Vers 2]: bare navn og nummer, ingen stemmebeskrivelse."""
+    return re.fullmatch(r"(?:verse|vers)\s*\d*", navn.strip("[]").strip().lower()) is not None
 
 
 def _seksjon_kort(navn: str) -> str:
@@ -808,12 +834,19 @@ def _fasit_tekster(dirs: list[Path]) -> list[tuple[Path, str]]:
                 continue
             raw = f.read_text(encoding="utf-8", errors="replace")
             blocks = CODE_FENCE.findall(raw) if f.suffix == ".md" else []
-            out.append((f, "\n".join(blocks) if blocks else raw))
+            # Identitet gjelder én tekstblokk; stilprompt eller andre låter
+            # i samme dokument skal ikke endre om låta er lik seg selv.
+            out.extend((f, block) for block in (blocks or [raw]))
     return out
 
 
 def _gram(ws: list[str], n: int = 4) -> list[tuple[str, ...]]:
     return [tuple(ws[i:i + n]) for i in range(len(ws) - n + 1)]
+
+
+def _klisjeer(text: str) -> list[str]:
+    low = text.lower()
+    return [k for k in KLISJE if re.search(r"(?<![a-zæøå])" + re.escape(k) + r"(?![a-zæøå])", low)]
 
 
 def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "hoggorm") -> list[dict]:
@@ -826,16 +859,16 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
     rep = analyse_text(data, text)
     secs = rep["seksjoner"]
     lines = _linjer(text)
-    core_set = {" ".join(_ord(l)) for _, l in lines}
+    core_lines = [ws for _, l in lines if (ws := _ord(l))]
 
     # Gjenbruk: fire ord eller mer på rad som står i en tidligere låt.
     grams: dict[tuple[str, ...], str] = {}
     adlib_fasit = [0, 0]
     for f, ftxt in _fasit_tekster(fasit_dirs):
         flines = [l for _, l in _linjer(ftxt)]
-        same = sum(" ".join(_ord(l)) in core_set for l in flines)
-        if flines and same > len(core_set) / 2:
-            continue  # samme låt som den som sjekkes
+        reference_lines = [ws for l in flines if (ws := _ord(l))]
+        if core_lines and reference_lines == core_lines:
+            continue  # identisk normalisert hovedtekst; delvis overlapp er gjenbruk
         adlib_fasit[0] += sum(bool(ADLIB.search(l)) for l in flines)
         adlib_fasit[1] += len(flines)
         for l in flines:
@@ -868,17 +901,19 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
         if c >= 3:
             add("gjentakelse", f"{w} ×{c} i versene")
 
-    # Seksjonsmerker: vers skal si rap, ingen instrumenter.
+    # Seksjonsmerker: første versjon har rene merker ([Verse 1]); beskrivelser legges
+    # til etter lytting. Et beskrevet versmerke i rap/Hoggorm må si rap.
     for sec in dict.fromkeys(s for s, _ in lines):
         low = sec.lower()
-        if profil in ("rap", "hoggorm") and _seksjon_type(sec) == "verse" and "rap" not in low:
-            add("merke", f"{sec}: versmerket sier ikke rap — Suno kan synge det")
+        if profil in ("rap", "hoggorm") and _seksjon_type(sec) == "verse" and not _rent_versmerke(sec) \
+                and not re.search(r"\brap\b", low):
+            add("merke", f"{sec}: versmerket beskriver stemmen, men sier ikke rap — Suno kan synge det")
         inst = [w for w in INSTRUMENTER if re.search(r"(?<![a-zæøå])" + re.escape(w) + r"(?![a-zæøå])", low)]
         if inst:
-            add("merke", f"{sec}: instrument i merket ({', '.join(inst)}) — bare stemme i []")
+            add("merke", f"{sec}: instrument i merket ({', '.join(inst)}) — instrumenter hører hjemme i stilprompten")
         stemme = [w for w in (*STEMME_NEI, *PRODUKSJON) if re.search(r"(?<![a-zæøå])" + re.escape(w) + r"(?![a-zæøå])", low)]
         if stemme:
-            add("merke", f"{sec}: {', '.join(stemme)} — [] er full brystrøst, uten falsett, belting, Anthemic eller produksjon")
+            add("merke", f"{sec}: {', '.join(stemme)} — beskrivelser i [] legges til etter lytting, én om gangen")
 
     # Ad-libs i versene mot favorittene.
     vers = [l for sec, l in lines if _seksjon_type(sec) == "verse"]
@@ -890,6 +925,9 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
 
     # Hook/refreng skal være likt hver gang.
     hooks = [s for s in secs if _seksjon_type(s["navn"]) == "hook"]
+    for n, h in enumerate(hooks, start=1):
+        if not h["linjer"]:
+            add("refreng", f"{_seksjon_kort(h['navn'])} nr. {n}: mangler hovedtekst")
     if hooks:
         first = [" ".join(_ord(l["tekst"])) for l in hooks[0]["linjer"]]
         for n, h in enumerate(hooks[1:], start=2):
@@ -901,7 +939,7 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
                     add("refreng", f"{_seksjon_kort(h['navn'])} nr. {n}, linje {k + 1}: «{cur}» ≠ «{first[k]}»")
 
     # Vers mot vers: linje N bør ha omtrent like mange stavelser (rap: ±3).
-    verses = [s for s in secs if _seksjon_type(s["navn"]) == "verse"]
+    verses = [s for s in secs if _seksjon_type(s["navn"]) == "verse" and s["linjer"]]
     for v in verses[1:]:
         base = verses[0]
         for k, (a, b) in enumerate(zip(base["stavelser"], v["stavelser"]), start=1):
@@ -909,18 +947,33 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
                 add("vers", f"{_seksjon_kort(v['navn'])} linje {k}: {b} stavelser mot {a} i {_seksjon_kort(base['navn'])}")
 
     # Ekko: slutten av et vers skal ikke gjenta starten av hooken som følger.
-    for a, b in zip(secs, secs[1:]):
-        if _seksjon_type(a["navn"]) == "verse" and _seksjon_type(b["navn"]) == "hook":
-            start = {clean(l["sluttord"]) for l in hooks[0]["linjer"][:2]}  # den kanoniske hooken
+    for i, a in enumerate(secs):
+        kind = _seksjon_type(a["navn"])
+        if kind not in ("verse", "pre"):
+            continue
+        j = i + 1
+        while j < len(secs) and _seksjon_type(secs[j]["navn"]) == "pre":
+            j += 1
+        if j == len(secs) or _seksjon_type(secs[j]["navn"]) != "hook":
+            continue
+        b = secs[j]
+        if kind == "verse":
+            # Behold sammenligningen med kanonisk hook når den har tekst.
+            # Et tomt første refreng må ikke skjule ekko mot det som følger.
+            canonical = hooks[0] if hooks[0]["linjer"] else b
+            start = {clean(l["sluttord"]) for l in canonical["linjer"][:2]}
             for l in a["linjer"][-2:]:
                 if clean(l["sluttord"]) in start:
                     add("ekko", f"{_seksjon_kort(a['navn'])} slutter på «{l['sluttord']}», samme som starten av hooken")
+        else:
+            hook_lines = {tuple(_ord(l["tekst"])) for l in b["linjer"]}
+            for l in a["linjer"]:
+                if tuple(_ord(l["tekst"])) in hook_lines:
+                    add("ekko", f"{_seksjon_kort(a['navn'])} siterer kroklinja «{l['tekst']}»")
 
     # Klisjeer (bare i teksten, ikke i seksjonsmerkene).
-    low = "\n".join(l for _, l in lines).lower()
-    for k in KLISJE:
-        if re.search(r"(?<![a-zæøå])" + re.escape(k) + r"(?![a-zæøå])", low):
-            add("klisjé", f"«{k}» står på forbudt-lista i Låtskriver.md")
+    for k in _klisjeer("\n".join(l for _, l in lines)):
+        add("klisjé", f"«{k}» står på forbudt-lista i Låtskriver.md")
 
     # Uttale for Suno.
     sett: set[str] = set()
@@ -930,6 +983,8 @@ def sjekk_tekst(data: Data, text: str, fasit_dirs: list[Path], profil: str = "ho
             if t in sett:
                 continue
             sett.add(t)
+            if profil == "hoggorm" and t in HOGGORM_STORE_ORD:
+                continue
             if len(t) == 1 and t.isupper() and t != "I":
                 add("uttale", f"«{t}» kan bli sunget som engelsk bokstav")
             elif len(t) > 1 and t.isupper():
@@ -949,13 +1004,95 @@ def print_sjekk(funn: list[dict]) -> None:
         print(f"  [{f['type']}] {f['melding']}")
 
 
+# --------------------------------------------------------------------------- --krok
+
+KROK_STAV = (5, 9)  # Låtskriver.md: kroklinja er normalt fem til ni stavelser
+
+
+def _meningsbaerende(ws) -> bool:
+    return not all(w in STOP for w in ws)
+
+
+def _inneholder(stor: tuple[str, ...], liten: tuple[str, ...]) -> bool:
+    n = len(liten)
+    return any(stor[i:i + n] == liten for i in range(len(stor) - n + 1))
+
+
+def _tidligere_linjer(fasit_dirs: list[Path]) -> list[tuple[str, tuple[str, ...]]]:
+    out = []
+    for f, ftxt in _fasit_tekster(fasit_dirs):
+        for _, l in _linjer(ftxt):
+            ws = tuple(_ord(l))
+            if ws:
+                out.append((f.name, ws))
+    return out
+
+
+def _brukt_for(ws: tuple[str, ...], tidligere: list[tuple[str, tuple[str, ...]]]) -> list[str]:
+    """Filer der kandidaten, en tidligere linje inni den, eller fire ord på rad står fra før."""
+    grams = {g for g in _gram(list(ws)) if _meningsbaerende(g)}
+    hits: list[str] = []
+    for name, prev in tidligere:
+        if name in hits:
+            continue
+        if (len(ws) >= 3 and _meningsbaerende(ws) and _inneholder(prev, ws)) \
+                or (len(prev) >= 3 and _meningsbaerende(prev) and _inneholder(ws, prev)) \
+                or any(g in grams for g in _gram(list(prev))):
+            hits.append(name)
+    return hits
+
+
+def krok_analyse(data: Data, kandidater: list[str], fasit_dirs: list[Path]) -> list[dict]:
+    """Sammenlign krokkandidater: stavelser, sluttrim, klisjé og om linja er brukt før."""
+    tidligere = _tidligere_linjer(fasit_dirs)
+    alle = len(data.wordset) + 1
+    out = []
+    for tekst in kandidater:
+        tokens = TOKEN.findall(unicodedata.normalize("NFC", ADLIB.sub(" ", tekst)))
+        stav = line_syllables(data, tokens) if tokens else 0
+        res = {"tekst": tekst, "stav": stav, "innenfor": KROK_STAV[0] <= stav <= KROK_STAV[1],
+               "sluttord": None, "nokkel": "", "multi": False, "rim": 0, "rim_vanlige": 0,
+               "klisje": _klisjeer(ADLIB.sub(" ", tekst)), "brukt_for": []}
+        if tokens:
+            end = tokens[-1]
+            key = data.info(end).nokkel
+            _, groups, _ = data._rhymes(end, limit=alle)
+            _, vanlige, _ = data._rhymes(end, limit=alle, vanlige=True)
+            res.update(sluttord=end.lower(), nokkel=key, multi=len(nuclei(key)) >= 2,
+                       rim=sum(map(len, groups.values())), rim_vanlige=sum(map(len, vanlige.values())),
+                       brukt_for=_brukt_for(tuple(_ord(tekst)), tidligere))
+        out.append(res)
+    return out
+
+
+def print_krok(res: list[dict]) -> None:
+    print("Krokkandidater (tekstbasert anslag, ikke lydtest):")
+    width = min(max([len(r["tekst"]) for r in res] + [20]), 60)
+    for r in res:
+        notes = [f"«{r['nokkel']}»" if r["nokkel"] else "ingen ord"]
+        if r["multi"]:
+            notes.append("multi")
+        if r["sluttord"]:
+            notes.append(f"{r['rim']} rene rim ({r['rim_vanlige']} vanlige)")
+        if not r["innenfor"]:
+            notes.append("utenfor fem–ni stavelser")
+        if r["klisje"]:
+            notes.append("klisjé: " + ", ".join(r["klisje"]))
+        if r["brukt_for"]:
+            extra = f" +{len(r['brukt_for']) - 3}" if len(r["brukt_for"]) > 3 else ""
+            notes.append("brukt før: " + ", ".join(r["brukt_for"][:3]) + extra)
+        txt = r["tekst"] if len(r["tekst"]) <= width else r["tekst"][: width - 1] + "…"
+        print(f"{r['stav']:>3}  {txt:<{width}}  " + " · ".join(notes))
+
+
 # --------------------------------------------------------------------------- cli
 
-def print_groups(groups: dict[int, list[str]]) -> None:
+def print_groups(groups: dict[int, list[str]], scores: dict[str, float] | None = None) -> None:
     for s, ws in groups.items():
         print(f"## {s} stavelse{'r' if s != 1 else ''}")
         for i in range(0, len(ws), 6):
-            print("  " + ", ".join(ws[i:i + 6]))
+            print("  " + ", ".join(f"{w} ({round(scores[w] * 100)} %)" if scores is not None else w
+                                  for w in ws[i:i + 6]))
         print()
 
 
@@ -968,6 +1105,8 @@ def main(argv: list[str] | None = None) -> int:
     modes.add_argument("--par", action="store_true", help="Sjekk første ord mot hvert av de neste")
     modes.add_argument("--tekst", type=Path, metavar="FIL", help="Analyser en hel tekst")
     modes.add_argument("--info", action="store_true", help="Vis lydform, trykk, nøkkel og stavelser")
+    modes.add_argument("--krok", action="store_true",
+                       help="Krokverksted: hver kandidatlinje i anførselstegn; stavelser, rim, klisjé, brukt før")
     p.add_argument("--stav", type=int, default=None, help="Bare denne stavelsesgruppa")
     p.add_argument("-n", "--limit", type=int, default=40, help="Maks per stavelsesgruppe (standard 40)")
     p.add_argument("--skjevt", action="store_true", help="Skjeve rim i stedet for rene")
@@ -980,10 +1119,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--uttale", type=Path, default=UTTALE, help=f"Unntaksfil (standard: {UTTALE})")
     p.add_argument("--frekvens", type=Path, default=FREKVENS, help=f"Frekvensliste (standard: {FREKVENS})")
     p.add_argument("--egne", type=Path, default=EGNE, help=f"Egne ord, slang og steder (standard: {EGNE})")
-    p.add_argument("--profil", choices=("sang", "rap", "hoggorm"), default="hoggorm",
-                   help="Regler for --sjekk (standard: hoggorm; sang krever ikke rapmerker)")
+    p.add_argument("--profil", choices=("sang", "rap", "hoggorm"), default=None,
+                   help="Regler for --sjekk og arkiv for --krok (standard: hoggorm; sang krever ikke rapmerker)")
     p.add_argument("--sjekk", action="store_true", help="Med --tekst: låtsjekk (gjenbruk, gjentakelser, merker, hook, uttale)")
-    p.add_argument("--fasit", type=Path, action="append", help="Mappe med tidligere låter for --sjekk (kan gjentas)")
+    p.add_argument("--fasit", type=Path, action="append",
+                   help="Mappe med tidligere låter for --sjekk og --krok (kan gjentas)")
     p.add_argument("--ingen-cache", action="store_true", help="Bygg indeksen uten å lese eller skrive cache")
     p.add_argument("--min-key", type=int, default=0, help=argparse.SUPPRESS)
     p.add_argument("--versjon", action="version", version=f"rim-bm {VERSION}")
@@ -993,24 +1133,37 @@ def main(argv: list[str] | None = None) -> int:
         p.error("--limit og --stav må være positive heltall")
     if args.assonans and args.skjevt:
         p.error("--assonans og --skjevt kan ikke brukes sammen")
+    if args.sjekk and not args.tekst:
+        p.error("--sjekk krever --tekst FIL")
+    if (args.profil is not None or args.fasit is not None) and not (args.sjekk or args.krok):
+        p.error("--profil og --fasit krever --sjekk eller --krok")
+    if args.krok and not args.ord:
+        p.error("--krok krever minst én kandidat, hver linje i anførselstegn")
+    args.profil = args.profil or "hoggorm"
+    # Bare Hoggorm bruker det implisitte arkivet; --fasit velger arkiv i alle profiler.
+    fasit = args.fasit if args.fasit is not None else (FASIT if args.profil == "hoggorm" else [])
     if not args.tekst and not args.ord:
         p.print_help()
         return 2
+
+    if args.tekst:
+        try:
+            text = args.tekst.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as e:
+            print(f"Kan ikke lese tekstfila {args.tekst}: {e}", file=sys.stderr)
+            return 2
 
     try:
         data = Data(args.wordlist, args.uttale, args.frekvens, args.skrift, not args.ingen_cache, egne=args.egne)
     except FileNotFoundError as e:
         print(f"Finner ikke ordlista: {e}", file=sys.stderr)
-        print("Kjør install.sh, eller sett RIM_BM_WORDLIST til stien for former-utf8.txt.", file=sys.stderr)
+        print("Kjør python3 dicts/lag-ordliste.py fra prosjektroten, eller sett RIM_BM_WORDLIST til stien for former-utf8.txt.", file=sys.stderr)
         return 1
 
-    if args.sjekk and not args.tekst:
-        p.error("--sjekk krever --tekst FIL")
     if args.tekst:
-        text = args.tekst.read_text(encoding="utf-8")
         rep = analyse_text(data, text)
         if args.sjekk:
-            rep["sjekk"] = sjekk_tekst(data, text, args.fasit if args.fasit is not None else (FASIT if args.profil == "hoggorm" else []), args.profil)
+            rep["sjekk"] = sjekk_tekst(data, text, fasit, args.profil)
         if args.json:
             print(json.dumps(rep, ensure_ascii=False, indent=2))
         else:
@@ -1018,6 +1171,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.sjekk:
                 print()
                 print_sjekk(rep["sjekk"])
+        return 0
+
+    if args.krok:
+        res = krok_analyse(data, args.ord, fasit)
+        if args.json:
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+        else:
+            print_krok(res)
         return 0
 
     if args.info:
@@ -1045,26 +1206,25 @@ def main(argv: list[str] | None = None) -> int:
     if args.batch or len(args.ord) > 1:
         results = []
         for word in args.ord:
-            qi, groups = data.rhymes(word, stav=args.stav, limit=args.limit,
-                                    skjevt=args.skjevt, filt=not args.alle, vanlige=args.vanlige,
-                                    assonans=args.assonans)
-            results.append({"ord": asdict(qi), "varianter": [asdict(v) for v in data.infos(word)],
-                            "skjevt": args.skjevt, "grupper": {str(k): v for k, v in groups.items()}})
+            results.append(data.search_result(word, stav=args.stav, limit=args.limit,
+                                              skjevt=args.skjevt, filt=not args.alle, vanlige=args.vanlige,
+                                              assonans=args.assonans))
         if args.json:
             print(json.dumps(results, ensure_ascii=False, indent=2))
         else:
             for result in results:
-                print(result["ord"]["ord"] + " — tekstbaserte rimkandidater")
-                print_groups({int(k): v for k, v in result["grupper"].items()})
+                print(result["ord"]["ord"] + (" — assonans, ikke rent rim" if args.assonans else " — tekstbaserte rimkandidater"))
+                print_groups({int(k): v for k, v in result["grupper"].items()}, result.get("assonans_score"))
         return 0
 
     word = args.ord[0]
-    qi, groups = data.rhymes(word, stav=args.stav, limit=args.limit, skjevt=args.skjevt,
-                             filt=not args.alle, vanlige=args.vanlige, assonans=args.assonans)
+    result = data.search_result(word, stav=args.stav, limit=args.limit, skjevt=args.skjevt,
+                                filt=not args.alle, vanlige=args.vanlige, assonans=args.assonans)
     if args.json:
-        print(json.dumps({"ord": asdict(qi), "varianter": [asdict(v) for v in data.infos(word)], "skjevt": args.skjevt,
-                          "grupper": {str(k): v for k, v in groups.items()}}, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
+    qi = data.info(word)
+    groups = {int(k): v for k, v in result["grupper"].items()}
     mode = "skrift" if args.skrift else "uttale"
     lyd = f"lyd «{qi.lyd}»  →  " if qi.lyd != clean(word) else ""
     kind = "assonans" if args.assonans else ("skjeve rim" if args.skjevt else mode)
@@ -1073,7 +1233,7 @@ def main(argv: list[str] | None = None) -> int:
     if not groups:
         print("Ingen treff." + ("" if args.skjevt else " Prøv --skjevt for skjeve rim."))
         return 0
-    print_groups(groups)
+    print_groups(groups, result.get("assonans_score"))
     return 0
 
 
