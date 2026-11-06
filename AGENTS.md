@@ -65,6 +65,12 @@ kontrollprofiler og avgrenset omskriving med låste linjer.
   `fornoyd/` brukte slike beskrivelser; de er ikke lenger forbudt, men heller
   ikke standard. Rapkravet i rap/Hoggorm gjelder bare beskrevne versmerker, og
   merkevarsler for stemme, instrumenter og produksjon er påminnelser.
+- Flowblokker (2.8.0, portert fra PR #6) er eksplisitte: `{flow A 10}` på egen
+  linje i en kontrollkopi. Samme navn = samme flow på tvers av seksjoner.
+  Merkene skal ikke med i pass tre eller Suno-teksten. Med flowmerker erstatter
+  flowsjekken vers-mot-vers-sjekken; uten merker er gammel oppførsel beholdt.
+  Avviksgrensen er bevisst fortsatt ±3 (`FLOW_AVVIK`) mens prompten krever
+  høyst én. PR #6 er erstattet av denne porten.
 
 ## Verifikasjon og miljøbegrensninger
 Kjør fra prosjektroten:
@@ -75,12 +81,14 @@ og for Claude/Grok-rettelsene:
 `python3 -m unittest discover -s dicts/tester -p test_v262.py -v`
 og for krokverkstedet:
 `python3 -m unittest discover -s dicts/tester -p test_v27.py -v`
-Disse har henholdsvis sju, fjorten, tjueén og femten tester med små,
+og for flowblokkene:
+`python3 -m unittest discover -s dicts/tester -p test_v28.py -v`
+Disse har henholdsvis sju, fjorten, tjueén, femten og fjorten tester med små,
 midlertidige datasett og må ikke tolkes som verifikasjon av norsk uttalekvalitet.
 
 Full suite er kjørt med `python3 -m unittest discover -s dicts/tester -v`
 mot den komplette Norsk ordbank-ordlista (600 400 former i
-`dicts/norsk-ordbank-bm/former-utf8.txt`). Resultat for 2.7.0: 142 tester, 0 feilet,
+`dicts/norsk-ordbank-bm/former-utf8.txt`). Resultat for 2.8.0: 156 tester, 0 feilet,
 0 errors, 0 hoppet over.
 
 - test_rim_bm.py: 27 bestått
@@ -93,6 +101,7 @@ mot den komplette Norsk ordbank-ordlista (600 400 former i
 - test_v261.py: 14 bestått
 - test_v262.py: 21 bestått
 - test_v27.py: 15 bestått
+- test_v28.py: 14 bestått
 
 Kjørt lokalt med Python 3.14.8. Python 3.10-syntaks og workflow-YAML er
 kontrollert. CI er konfigurert for 3.10 og 3.14 i `.github/workflows/tests.yml`,
@@ -108,8 +117,11 @@ valgt bort automatisk generering og LLM-dommer. Testene ligger i
 
 ## Neste arbeid
 1. Behold full suite med komplett datasett som regresjonskontroll ved nye endringer.
-2. Innfør eksplisitte flowblokker før stavelseskontrollen strammes inn.
-   Nåværende sammenligning mellom vers er ikke en kontroll av flowblokker.
+2. Flowblokker finnes fra 2.8.0. Neste: stram inn stavelseskontrollen per
+   flowblokk (`FLOW_AVVIK` fra 3 mot promptens høyst én, eventuelt per profil),
+   og vurder å kreve minst ett flowskifte i rapvers på seksten bars.
+   Verktøyets stavelsestall er anslag; test innstrammingen mot ekte låter og
+   lyttelogger før den gjøres streng.
 3. Vurder separate profilfiler og oppdeling av den store prompten uten å miste
    brukerens personlige regler. Dette er ikke gjennomført i første runde.
 4. Deretter: uttalevalg per låt, bedre låtrapport, variasjonsarkiv for bilder
