@@ -1,4 +1,4 @@
-# rim-bm 2.6.2
+# rim-bm 2.7.0
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
@@ -34,7 +34,7 @@ bokstaver sammenlignes fortsatt ikke. Låste linjer i omskrivingsprompten har
 strengere krav og skal sammenlignes ordrett. Tomme refreng beholdes i rapporten
 og varsles av `--sjekk`, også når de bare inneholder ad-libs.
 
-Rapmerking krever ordet `rap`; `trap` og `drap` oppfyller ikke kravet.
+Fra 2.7.0 godtas rene versmerker som `[Verse 1]` i alle profiler; første versjon av en låt skal ha rene merker, og beskrivelser legges til etter lytting. Har et versmerke en beskrivelse, krever rap- og Hoggorm-profilen ordet `rap`; `trap` og `drap` oppfyller ikke kravet.
 Den eksplisitt tillatte skrivemåten `HÅN` gir ikke bokstaveringsvarsel i
 Hoggorm-profilen. Andre ord med store bokstaver vurderes som før, også i egne
 ord. Dette sier ikke hvordan Suno faktisk vil uttale dem.
@@ -53,6 +53,7 @@ rim-bm snøen --stav 2
 rim-bm tjener --skjevt
 rim-bm mynter --assonans --vanlige   # vokalklang for rap, med score
 rim-bm kald --skrift
+rim-bm --krok "Jeg retter én feil om gangen" "Hodet er klart, jeg tar min fart"
 ```
 
 `--batch` laster data én gang. `--json` beholder norske tegn og inneholder `metode`, `usikker` og tilgjengelige `varianter` i ordanalysene. Alle vurderinger merkes usikre i betydningen tekstbaserte anslag; det er ikke en kalibrert sannsynlighet. Metoden angir `uttalefil`, `heuristikk` eller `skrift`, ikke en ekstern kildebekreftelse.
@@ -63,17 +64,25 @@ Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser f�
 
 `--tekst` ignorerer seksjonsmerker og ad-libs i parentes i hovedtellinga. Den varsler om sifre. Rimskjemaet kan samle gjentatte ord og grove skjeve rim under samme bokstav; se parets type. Ingen musikalsk kvalitet er automatisk godkjent.
 
-`--stav` og `-n` må være positive. `--info`, `--par`, `--tekst` og `--batch` kan ikke kombineres med hverandre. `--alle` beholder sammensetninger av søkeordet; `--vanlige` betyr at ordet finnes i den medfølgende frekvenslista. `--skrift` deaktiverer uttaleomskrivingene, men gjenskaper ikke alle detaljer i v1.
+`--stav` og `-n` må være positive. `--info`, `--par`, `--tekst`, `--batch` og `--krok` kan ikke kombineres med hverandre. `--alle` beholder sammensetninger av søkeordet; `--vanlige` betyr at ordet finnes i den medfølgende frekvenslista. `--skrift` deaktiverer uttaleomskrivingene, men gjenskaper ikke alle detaljer i v1.
 
 ## Låtsjekk
 
-`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, versmerker uten «rap», instrumenter i merkene, ad-libs mot favorittene, hook som avviker, vers to mot første vers med hovedtekst, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Bare Hoggorm leser standardarkivet `artists/Hoggorm/studio/fornoyd` og `tekster`, eller mapper valgt med `RIM_BM_FASIT`. Bruk `--fasit DIR` for eksplisitte mapper i alle profiler; flagget går foran miljøvariabelen. Funnene er forslag, ikke dom.
+`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, beskrevne versmerker uten «rap», instrumenter og stemmebeskrivelser i merkene (som påminnelser), ad-libs mot favorittene, hook som avviker, vers to mot første vers med hovedtekst, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Bare Hoggorm leser standardarkivet `artists/Hoggorm/studio/fornoyd` og `tekster`, eller mapper valgt med `RIM_BM_FASIT`. Bruk `--fasit DIR` for eksplisitte mapper i alle profiler; flagget går foran miljøvariabelen. Funnene er forslag, ikke dom.
 
 En referanse hoppes bare over når hele den normaliserte hovedteksten er identisk i samme linjerekkefølge, uten hensyn til merker, ad-libs, tegnsetting eller store/små bokstaver. I Markdown behandles hver kodeblokk separat, så en stilprompt i en annen blokk ikke gjør låta ulik seg selv. Andre blokker i samme fil sammenlignes fortsatt. Delvis overlapp, også med en tidligere versjon av samme låt, gir gjenbruksfunn som må vurderes. Gjentatte kroklinjer i arkivet gjør ikke en annen låt til «samme låt».
 
 Ekkokontrollen av versslutten virker også når ett eller flere pre-refreng står før hooken. Den sammenligner mot starten av første refreng med mindre dette er tomt; da brukes refrenget som følger verset. Pre-refreng varsles når en normalisert linje siterer en hel linje fra det følgende refrenget. Delvis sitering, signaturbilder og tittelgjenbruk krever fortsatt manuell vurdering.
 
-`--profil` og `--fasit` krever `--sjekk`, som igjen krever `--tekst`. Ugyldige kombinasjoner og uleselige tekstfiler gir feilmelding og returkode 2 før indeksen lastes.
+`--profil` og `--fasit` krever `--sjekk` (som igjen krever `--tekst`) eller `--krok`. Ugyldige kombinasjoner og uleselige tekstfiler gir feilmelding og returkode 2 før indeksen lastes.
+
+## Krokverksted (2.7)
+
+`rim-bm --krok "linje" "linje"` vurderer krokkandidater side om side. Hver kandidat står i egne anførselstegn. For hver linje vises stavelser i hovedteksten (ad-libs i parentes telles ikke), om tallet ligger innenfor fem–ni, sluttordets rimnøkkel, `multi` når nøkkelen har to eller flere vokalkjerner, antall rene rim i ordlista (og hvor mange av dem som er vanlige), klisjeer fra forbudt-lista og hvilke tidligere låter linja står i.
+
+«Brukt før» sjekkes mot samme arkiv som `--sjekk`: bare Hoggorm leser standardarkivet `fornoyd/` og `tekster/`, og `--fasit DIR` velger mapper i alle profiler. `--fasit artists/Hoggorm/studio` tar med alle undermapper, også utkast. En kandidat merkes når den står inni en tidligere linje (minst tre ord, ikke bare småord), når en tidligere linje står inni kandidaten, eller når de deler fire ord på rad. Sammenligningen er ordrett etter normalisering; en omskrevet krok med samme bilde eller rimpar må vurderes manuelt. En kandidat fra en låt som allerede ligger i arkivet, merkes mot seg selv.
+
+Antall rene rim er et mål på hvor lett sluttordet er å rime på, ikke på hvor godt rimet passer. `--json` gir én post per kandidat med `tekst`, `stav`, `innenfor`, `sluttord`, `nokkel`, `multi`, `rim`, `rim_vanlige`, `klisje` og `brukt_for`.
 
 ## Assonans
 
@@ -130,7 +139,7 @@ Kjør fra prosjektroten:
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s dicts/tester -v
 ```
 
-127 tester. Fordelingen per testfil står i `../AGENTS.md`. Testene gjelder standardpakken; kontrolltestene for 2.6, 2.6.1 og 2.6.2 bruker små, midlertidige datasett. Fullsuite-testene oppretter en egen midlertidig indekscache som slettes etter kjøring; de leser eller rydder ikke brukercachen. En brukeruttale kan med vilje gi andre resultater; standardpakken leveres med en tom brukerfil.
+142 tester. Fordelingen per testfil står i `../AGENTS.md`. Testene gjelder standardpakken; kontrolltestene for 2.6, 2.6.1, 2.6.2 og 2.7 bruker små, midlertidige datasett. Fullsuite-testene oppretter en egen midlertidig indekscache som slettes etter kjøring; de leser eller rydder ikke brukercachen. En brukeruttale kan med vilje gi andre resultater; standardpakken leveres med en tom brukerfil.
 
 `.github/workflows/tests.yml` kjører suiten med medfølgende ordliste på Python 3.10 og 3.14 ved push og pull request. Arbeidsflyten bruker [checkout](https://github.com/actions/checkout) og [setup-python](https://github.com/actions/setup-python). En lokal testkjøring er ikke en bekreftelse på at GitHub-kjøringen er gjennomført.
 

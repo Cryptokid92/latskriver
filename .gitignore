@@ -4,3 +4,7 @@ dicts/norsk-ordbank-bm/ordbank.tar.gz
 
 __pycache__/
 *.py[cod]
+
+# Privat Hoggorm-arkiv (favoritter, utkast og lyttelogger). rim-bm leser
+# artists/Hoggorm/studio/fornoyd og tekster i Hoggorm-profilen. Skal ikke committes.
+artists/

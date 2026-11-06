@@ -47,7 +47,8 @@ class Kontroll(unittest.TestCase):
         self.assertFalse(any(f['type'] == 'refreng' for f in self.check('[Chorus]\nsol\n[Chorus]\nsol')))
 
     def test_profiles(self):
-        text = '[Verse 1]\nsol\n'
+        # Fra 2.7.0 godtas rene versmerker; rapkravet gjelder beskrevne versmerker.
+        text = '[Verse 1 - cold flow]\nsol\n'
         self.assertFalse(any('sier ikke rap' in f['melding'] for f in self.check(text)))
         for profile in ('rap', 'hoggorm'):
             self.assertTrue(any('sier ikke rap' in f['melding'] for f in self.check(text, profile)))

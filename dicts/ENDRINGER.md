@@ -1,3 +1,12 @@
+# Endringer fra 2.6.2 til 2.7.0
+
+- `--krok "linje" "linje"`: krokverksted. Viser stavelser (fem–ni), sluttrim, antall rene og vanlige rim, multi, klisjeer og tidligere bruk per kandidat. `--json` gir én post per kandidat.
+- «Brukt før» bruker samme arkivregel som `--sjekk`: implisitt Hoggorm-arkiv bare i Hoggorm-profilen, `--fasit` i alle profiler. `--profil` og `--fasit` er nå tillatt med `--krok` i tillegg til `--sjekk`.
+- Klisjésjekken er skilt ut som felles hjelpefunksjon; `--sjekk` gir samme funn som før.
+- Seksjonsmerker: første versjon har rene merker, og beskrivelser legges til etter lytting. Rene versmerker (`[Verse 1]`) gir ikke lenger rapvarsel i rap- og Hoggorm-profilen; kravet om `rap` gjelder versmerker med beskrivelse. Varsler om instrumenter, stemme og produksjon i merkene er formulert som påminnelser, ikke forbud.
+- Låtskriver.md har et krokverksted mellom pass én og pass to, krokvalg i leveransen, en lyttelogg-regel, den nye merkeregelen og en strengere variasjonsregel i Hoggorm-profilen. Malen ligger i `maler/lyttelogg.md`.
+- 15 nye regresjonstester, til sammen 142. `test_v26.test_profiles` bruker nå et beskrevet versmerke, fordi et rent merke ikke lenger skal gi rapvarsel.
+
 # Endringer fra 2.6.1 til 2.6.2
 
 - Cache-nøkkelen inkluderer skriptets innholdshash og absolutte datastier. Fullsuite-testene bruker egen midlertidig cache.
