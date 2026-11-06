@@ -1,4 +1,4 @@
-# rim-bm 2.7.0
+# rim-bm 2.8.0
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
@@ -39,6 +39,33 @@ Den eksplisitt tillatte skrivemåten `HÅN` gir ikke bokstaveringsvarsel i
 Hoggorm-profilen. Andre ord med store bokstaver vurderes som før, også i egne
 ord. Dette sier ikke hvordan Suno faktisk vil uttale dem.
 
+## Flowblokker (2.8)
+
+Et flowmerke på egen linje starter en flowblokk: `{flow A}` eller `{flow A 10}`
+(navn og valgfritt stavelsesmål; `{flyt A}` godtas også). Blokka varer til neste
+flowmerke eller seksjonsmerke. Samme navn betyr samme flow, også i en annen seksjon.
+Merkene telles ikke som tekst, og et ukjent `{...}`-merke gir en advarsel.
+
+```text
+[Verse 1]
+{flow A 10}
+Bussen venter utenfor kiosken
+{flow B 12}
+Jeg teller mynter mens han ser på klokka si
+[Verse 2]
+{flow B 12}
+Neste dag står bussen der og venter igjen
+```
+
+`--tekst` skriver `Flow: A=10: 10 | B=12: 12` under seksjonen, og JSON har
+`blokker` per seksjon og `flow` per linje. `--sjekk` sammenligner linjene i hver
+flow mot målet, eller mot det vanligste tallet når målet mangler, og melder avvik
+over tre stavelser, ulike mål for samme flow og verslinjer uten flowmerke. Uten
+flowmerker brukes den gamle sammenligningen vers én mot vers to, linje for linje.
+Grensen på tre er den samme som før; innstramming er neste steg. Merkene hører
+hjemme i kontrollkopien, ikke i teksten som limes inn i Suno. `--krok` og
+gjenbrukssjekken hopper også over `{...}`-linjer i arkivet.
+
 ## Kommandoer
 
 ```bash
@@ -68,7 +95,7 @@ Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser f�
 
 ## Låtsjekk
 
-`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, beskrevne versmerker uten «rap», instrumenter og stemmebeskrivelser i merkene (som påminnelser), ad-libs mot favorittene, hook som avviker, vers to mot første vers med hovedtekst, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Bare Hoggorm leser standardarkivet `artists/Hoggorm/studio/fornoyd` og `tekster`, eller mapper valgt med `RIM_BM_FASIT`. Bruk `--fasit DIR` for eksplisitte mapper i alle profiler; flagget går foran miljøvariabelen. Funnene er forslag, ikke dom.
+`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, beskrevne versmerker uten «rap», instrumenter og stemmebeskrivelser i merkene (som påminnelser), ad-libs mot favorittene, hook som avviker, flowblokker (uten flowmerker: vers to mot første vers med hovedtekst), ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Bare Hoggorm leser standardarkivet `artists/Hoggorm/studio/fornoyd` og `tekster`, eller mapper valgt med `RIM_BM_FASIT`. Bruk `--fasit DIR` for eksplisitte mapper i alle profiler; flagget går foran miljøvariabelen. Funnene er forslag, ikke dom.
 
 En referanse hoppes bare over når hele den normaliserte hovedteksten er identisk i samme linjerekkefølge, uten hensyn til merker, ad-libs, tegnsetting eller store/små bokstaver. I Markdown behandles hver kodeblokk separat, så en stilprompt i en annen blokk ikke gjør låta ulik seg selv. Andre blokker i samme fil sammenlignes fortsatt. Delvis overlapp, også med en tidligere versjon av samme låt, gir gjenbruksfunn som må vurderes. Gjentatte kroklinjer i arkivet gjør ikke en annen låt til «samme låt».
 
@@ -139,7 +166,7 @@ Kjør fra prosjektroten:
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s dicts/tester -v
 ```
 
-142 tester. Fordelingen per testfil står i `../AGENTS.md`. Testene gjelder standardpakken; kontrolltestene for 2.6, 2.6.1, 2.6.2 og 2.7 bruker små, midlertidige datasett. Fullsuite-testene oppretter en egen midlertidig indekscache som slettes etter kjøring; de leser eller rydder ikke brukercachen. En brukeruttale kan med vilje gi andre resultater; standardpakken leveres med en tom brukerfil.
+156 tester. Fordelingen per testfil står i `../AGENTS.md`. Testene gjelder standardpakken; kontrolltestene for 2.6, 2.6.1, 2.6.2, 2.7 og 2.8 bruker små, midlertidige datasett. Fullsuite-testene oppretter en egen midlertidig indekscache som slettes etter kjøring; de leser eller rydder ikke brukercachen. En brukeruttale kan med vilje gi andre resultater; standardpakken leveres med en tom brukerfil.
 
 `.github/workflows/tests.yml` kjører suiten med medfølgende ordliste på Python 3.10 og 3.14 ved push og pull request. Arbeidsflyten bruker [checkout](https://github.com/actions/checkout) og [setup-python](https://github.com/actions/setup-python). En lokal testkjøring er ikke en bekreftelse på at GitHub-kjøringen er gjennomført.
 

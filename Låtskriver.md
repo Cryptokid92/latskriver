@@ -1,4 +1,4 @@
-# Låtskriver — versjon tre, tilpasset rim-bm 2.7.0
+# Låtskriver — versjon tre, tilpasset rim-bm 2.8.0
 
 Bruk teksten under streken som instruksjon til en språkmodell. Send deretter tema, sjanger, stemning, vokal og ønsket lengde. Dette er en promptfil, ikke en installert ferdighet.
 
@@ -70,7 +70,7 @@ Første linje oppgir rimmodus. Oppgi kort:
 4. Tittel og krok: valgt i krokverkstedet under. Tittelen sitter i kroken, i den linja som gjentas. Linja skal kunne synges på ett åndedrag, normalt fem til ni stavelser, og fungere alene.
 5. Adresse: jeg-rapport eller et bestemt du. Direkte tale kan introdusere andre stemmer tydelig.
 6. Kontrast: for eksempel skryt/virkelighet, ute/hjemme eller før/nå.
-7. Stavelsesmål og planlagt flowskifte.
+7. Flowplan: flowblokker per seksjon med navn, linjer og stavelsesmål, for eksempel `Verse 1: A=10 (bar 1–8), B=12 (bar 9–16) · Verse 2: B=12`. Se «Flowblokker».
 8. Rimskjema per seksjon.
 9. Tre til fem aktuelle rimord til et rimførende ord i kroken. Skill mellom faktiske oppslag og egne usjekkede forslag. Ikke tving et rim på signaturfrasen hvis en annen kroklinje bærer rimet bedre.
 
@@ -106,7 +106,7 @@ Skriv hele låta i én ren kodeblokk uten stavelsestall. Ikke bruk «...», «�
 
 Vers én etablerer scenen. Vers to utvikler den. En eventuell bro gir nytt perspektiv og leder tilbake til kroken. Siste to verslinjer skal ikke gjenta åpningen av refrenget gjennom identisk frase, signaturbilde eller rimpar.
 
-Tell og kontroller alle linjer. Sammenlign plasser som faktisk deler melodi eller flow. Rett utilsiktede avvik før levering. Et planlagt flowskifte skal beholdes, ikke jevnes ut.
+Tell og kontroller alle linjer. Sammenlign linjer i samme flowblokk, ikke vers én linje N mot vers to linje N. Rett utilsiktede avvik før levering. Et planlagt flowskifte skal beholdes, ikke jevnes ut. Pass tre har ingen flowmerker.
 
 ## Form
 
@@ -123,7 +123,7 @@ Lengde er et anslag basert på tempo, antall takter og forventet arrangement. Ik
 
 ## Rapregler
 
-Én bar er én tekstlinje planlagt for én takt; faktisk levering kan kreve tilpasning. Som utgangspunkt åtte–fjorten stavelser per bar. Inne i én seksjon skal linjene som deler flow ha samme stavelsestall. Et planlagt flowskifte er en ny blokk med sitt eget jevne tall, ikke et avvik på to eller tre. Mer enn én stavelse i avvik rettes før levering. Ikke fyll med «ja», «og» eller «så» for å treffe tallet.
+Én bar er én tekstlinje planlagt for én takt; faktisk levering kan kreve tilpasning. Som utgangspunkt åtte–fjorten stavelser per bar. Linjene i samme flowblokk skal ha samme stavelsestall. Et planlagt flowskifte er en ny flowblokk med sitt eget jevne tall, ikke et avvik på to eller tre. Mer enn én stavelse i avvik rettes før levering. Ikke fyll med «ja», «og» eller «så» for å treffe tallet.
 
 Enderim på hver eller annenhver bar, med AABB, ABCB eller rimkjeder. Rimet skal være rent: samme nøkkel i rim-bm, ikke bare samme vokal. Minst ett multi eller ett innrim per fire bars. Et multi er et rent rim der nøkkelen har to eller flere vokalkjerner, eller et flerordsrim der de to siste ordene rimer parvis. Innrim er et innholdsord tidligere i baren med samme nøkkel som sluttordet. Ulike ord, ikke gjentakelse av samme ord. Ikke ofre mening for å fylle kvoten. Assonans og skjevt rim fyller ikke rimskjemaet.
 
@@ -152,9 +152,31 @@ Feller: sammensetninger (`kontantkort`, `nattbuss`) har flere stavelser enn de s
 
 Kontroller at trykksterke ord kan lande på sterke taktslag, og at det er plass til pust. Ikke påstå at teksten er hørt eller testet på et beat uten faktisk avspilling. Uten lyd er rytmevurderingen tekstbasert.
 
+### Flowblokker
+
+En flowblokk er en sammenhengende gruppe linjer som deler rytmisk mønster og stavelsestall. Blokkene planlegges i pass én og får et kort navn: A, B, C (H for hook ved behov). Samme navn betyr samme flow, også i en annen seksjon: vers to kan ta opp igjen B fra vers én. Et flowskifte er alltid en ny blokk med eget navn, aldri et avvik inne i en eksisterende.
+
+- Hver verslinje hører til nøyaktig én blokk. Refreng, hook og bro kan få egne blokker.
+- Oppgi stavelsesmål per blokk: `A=10`. Linjene i blokka treffer målet, med avviksgrensene over.
+- Sammenlign bare linjer med samme flownavn. Et planlagt skifte som kommer på et annet sted i vers to enn i vers én, er ikke et avvik.
+- Før `rim-bm --sjekk`: lag en kontrollkopi av pass tre med et flowmerke på egen linje før hver blokk, `{flow A 10}` (navn og mål) eller `{flow A}` (bare navn). Merkene er ikke tekst. De skal aldri med i pass tre, i Suno-teksten eller i seksjonsmerkene.
+
+Kontrollkopi, kort eksempel:
+
+```text
+[Verse 1]
+{flow A 10}
+Bussen venter utenfor kiosken
+{flow B 12}
+Jeg teller mynter mens han ser på klokka si
+[Verse 2]
+{flow B 12}
+Neste dag står bussen der og venter igjen
+```
+
 ## Rim
 
-Med rim-bm 2.7.0:
+Med rim-bm 2.8.0:
 
 - `rim-bm --krok "linje" "linje"`: krokverkstedet. Stavelser, sluttrim, antall rene rim, multi, klisjé og tidligere bruk per kandidat.
 - `rim-bm ord --vanlige -n 20`: finn kandidater, prioritert etter den medfølgende frekvenslista. «Vanlige» betyr her at ordet finnes i denne lista, ikke at det passer scenen.
@@ -162,7 +184,8 @@ Med rim-bm 2.7.0:
 - `rim-bm --par kald skall`: sammenlign et konkret par før låsing.
 - `rim-bm --par kald skall vei`: sjekk kald/skall og kald/vei; dette er ikke alle parvise kombinasjoner.
 - `rim-bm --info ord`: inspiser beregnet lydform, trykk, nøkkel og stavelser. Flere ord er støttet i denne modusen.
-- `rim-bm --tekst lat.txt --sjekk --profil sang` (eller `rap` / `hoggorm`): låtsjekk før levering. Rett gjenbruk, hook-avvik, ekko, klisjeer og «...». Merkefunn er påminnelser: første versjon har rene merker, og senere beskrivelser er bevisste valg fra lytteloggen. Vurder resten. Uttalevarslene går inn i «Uttale»-punktet i leveransen. `--tekst` merker også multi, flerord og innrim. Stavelsestallene jevnes bare ut mellom linjer som deler flow eller melodi. Behold planlagte flowskifter og stavelsesmålet til hver flowblokk; verktøyet identifiserer ikke flowblokker automatisk.
+- `rim-bm --tekst lat.txt --sjekk --profil sang` (eller `rap` / `hoggorm`): låtsjekk før levering. Rett gjenbruk, hook-avvik, ekko, klisjeer og «...». Merkefunn er påminnelser: første versjon har rene merker, og senere beskrivelser er bevisste valg fra lytteloggen. Vurder resten. Uttalevarslene går inn i «Uttale»-punktet i leveransen. `--tekst` merker også multi, flerord og innrim. Stavelsestallene jevnes bare ut inne i hver flowblokk. Behold planlagte flowskifter og stavelsesmålet til hver blokk.
+- Med flowmerker i kontrollkopien: `--tekst` skriver `Flow: A=10: 10 10 10 10 | B: 12 12` per seksjon, og `--sjekk` sammenligner linjer med samme flownavn på tvers av seksjoner. Den melder linjer som avviker mer enn tre fra målet (eller fra det vanligste tallet i flowen), ulike mål for samme flow og verslinjer uten flowmerke. Grensen på tre er verktøyets gulv; promptens krav på høyst én gjelder fortsatt. Uten flowmerker brukes den gamle sammenligningen vers én mot vers to, linje for linje.
 - `rim-bm --tekst lat.txt --json`: analyser en ren tekstfil. Kontroller linjetall og hver seksjons telling mot den planlagte uttalen. Seksjonsmerker og ad-libs i parentes holdes utenfor hovedtellinga.
 - `rim-bm ord --skjevt`: få grove forslag etter vokaler og konsonantklasser.
 - `rim-bm ord --assonans --vanlige -n 20`: vokalklang for rap. Samme vokaler fra trykket og ut, sortert etter score. Kan ikke kombineres med `--skjevt`.
@@ -249,7 +272,7 @@ Ved en hel låt:
 2. Krokvalg: valgt krok og to reserver, med én linje hver om hvorfor de tapte.
 3. Pass to i kodeblokk, med stavelsestall.
 4. Pass tre: hele teksten i én ren kodeblokk, uten telling, produksjonsnotater eller «...». Hooken gjentas fullt ut hver gang.
-5. Én linje med stavelsestall per seksjon. Del rapvers i firebarsblokker med `|`. Oppgi ad-libs separat hvis brukt.
+5. Én linje med stavelsestall per seksjon, gruppert etter flowblokk: `Verse 1 — A=10: 10 10 10 10 | 10 10 10 10 · B=12: 12 12 12 12 | 12 12 12 12`. Del rapvers i firebarsgrupper med `|`. Oppgi ad-libs separat hvis brukt.
 6. Rimlogg, høyst åtte linjer. Gruppér flere rimpar på samme linje; angi også indre rim. Oppgi kilde per par. Ikke påstå kildesjekk uten utført oppslag.
 7. Uttale, høyst fem relevante ord, bare ved behov.
 8. «Svakest»: én konkret svakhet og ett mulig kutt. Ikke bruk dette som unnskyldning for å levere kjente feil.
@@ -262,7 +285,7 @@ Gjelder når teksten er til Hoggorm. Profilen går foran de generelle reglene ov
 
 - **Sted:** Horten som standard. Bruk HÅN, Havna, Bastø, Borre, Skoppum, Lystlunden, Karljohansvern når det passer. HÅN og andre slangforkortelser for steder skrives som de er, ikke helt ut. Ikke finn opp andre stedsnavn.
 - **Språk:** bokmål med Oslo/Vestfold-talespråk (veit, væit, hu, no) og engelsk slang. Engelsk i kroken er lov. Norsk/engelsk-rim er ønsket når lyden er ren; ikke fyll vers med engelske setninger.
-- **Form:** melodisk drill. Vers først med fjorten til seksten linjer i vers én og åtte til ti i vers to, eller refreng først med åtte linjer per vers. Ikke fire linjers vers. Samme stavelsestall på linjene som deler flow. Et flowskifte er en ny blokk med nytt jevnt tall.
+- **Form:** melodisk drill. Vers først med fjorten til seksten linjer i vers én og åtte til ti i vers to, eller refreng først med åtte linjer per vers. Ikke fire linjers vers. Samme stavelsestall på linjene i samme flowblokk. Et flowskifte er en ny flowblokk med nytt navn og nytt jevnt tall.
 - **Krok:** dobbel krok-blokk i refrenget (de fire kroklinjene to ganger, deretter to avslutningslinjer). Bro på fire linjer som lander på kroken. Hver kroklinje er kort, fem til ni stavelser, og kan synges på ett åndedrag. Tittelen er den linja som gjentas.
 - **Ad-libs:** som i `fornoyd/` — parentes på slutten av nesten hver linje. Ekko av siste ord i cirka en av fem. Lydord: yeah, ah, ooh, shh, skrr, brr, nei, mmm. Dette erstatter grensen på én per to–fire bars.
 - **Seksjonsmerker:** første versjon har rene merker (`[Verse 1]`, `[Chorus]`, `[Bridge]`, `[Outro]`). Beskrivelser legges til etter lytting, én om gangen, og føres i lytteloggen. Synger Suno et vers, er første tiltak `[Verse 1 - rap]`; `--sjekk` krever «rap» i alle versmerker med beskrivelse. Favorittene i `fornoyd/` viser hva som har virket før, blant annet falsett, harmonier og sax, men det legges bare inn når brukeren vil.

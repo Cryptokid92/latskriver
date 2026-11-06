@@ -1,3 +1,14 @@
+# Endringer fra 2.7.0 til 2.8.0
+
+Portert fra PR #6 (skrevet mot 2.6) og tilpasset 2.6.2 og 2.7.0.
+
+- Eksplisitte flowblokker: `{flow A}` eller `{flow A 10}` på egen linje starter en blokk med navn og valgfritt stavelsesmål (`{flyt A}` godtas). Blokka varer til neste flowmerke eller seksjonsmerke. Merkene telles ikke som tekst og er usynlige for gjenbruk-, klisjé-, uttale- og krokverkstedsjekken. Ukjente `{...}`-merker gir en advarsel.
+- `--tekst` skriver `Flow:` per seksjon. JSON har `blokker` (flow, mål, linjenumre, stavelser) per seksjon og `flow` per linje.
+- `--sjekk` sammenligner linjer med samme flownavn på tvers av seksjoner, mot målet eller det vanligste tallet. Melder avvik over tre, ulike mål for samme flow og verslinjer uten flowmerke. Et planlagt flowskifte på ulike steder i versene gir ikke lenger falske vers-funn.
+- Uten flowmerker er sjekken uendret (vers én mot vers to, linje for linje, ±3).
+- Låtskriver.md: flowplan i pass én, egen del om flowblokker med kontrollkopi, sammenligning per blokk i pass tre og rapreglene, og stavelseslinja i leveransen gruppert per blokk. Eksemplene bruker rene seksjonsmerker.
+- 14 nye tester i `test_v28.py`, til sammen 156. PR-ens versjonstest er utelatt, siden den bare speilet versjonsnummeret.
+
 # Endringer fra 2.6.2 til 2.7.0
 
 - `--krok "linje" "linje"`: krokverksted. Viser stavelser (fem–ni), sluttrim, antall rene og vanlige rim, multi, klisjeer og tidligere bruk per kandidat. `--json` gir én post per kandidat.
