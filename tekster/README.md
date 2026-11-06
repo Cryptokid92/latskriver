@@ -65,6 +65,12 @@ Diverse ferdige tekster (mcp_test / øvrig).
 
 Eksport fra Nikolai sitt bibliotek på suno.com. Flere Create-versjoner med samme tekst er slått sammen til én fil. Tekstene er lagret slik de kom ut av eksporten. Full indeks (titler, filer og clip-id-er) ligger i [suno/README.md](suno/README.md).
 
+### `favoritter/`
+
+Suno-lenker til favorittspor (ingen audiofiler). Første liste: privat spilleliste «Hogg- Remasterd» (23 spor).
+
+- [README.md](favoritter/README.md)
+
 ## Hoppet over
 
 - Strofe-status `utkast` (130 sanger) – ikke ferdigstilte.
