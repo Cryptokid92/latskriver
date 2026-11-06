@@ -28,3 +28,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
           RIM_BM_CACHE: ${{ runner.temp }}/rim-bm
         run: python3 -m unittest discover -s dicts/tester -v
+      - name: Evalueringsverktøyet
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          RIM_BM_CACHE: ${{ runner.temp }}/rim-bm
+        run: python3 -m unittest discover -s eval -v

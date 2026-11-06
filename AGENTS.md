@@ -103,7 +103,8 @@ Før en endring i `Låtskriver.md` regnes som en forbedring: lag tekster til de
 faste briefene med gammel og ny versjon, kjør `poeng` og `sammenlign`, og la
 brukeren ta blindtesten (se `eval/README.md`). Ingen API-nøkkel: brukeren har
 valgt bort automatisk generering og LLM-dommer. Testene ligger i
-`eval/test_evaluer.py`.
+`eval/test_evaluer.py` og kjøres i samme CI-jobb som rim-bm
+(`.github/workflows/tests.yml`, Python 3.10 og 3.14).
 
 ## Neste arbeid
 1. Behold full suite med komplett datasett som regresjonskontroll ved nye endringer.
