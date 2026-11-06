@@ -1,4 +1,4 @@
-# rim-bm 2.6
+# rim-bm 2.6.2
 
 Tekstbaserte rimkandidater for norsk bokmål. Bygger videre på den innsendte 2.0-pakken. Bruker uttaleregler, eksplisitte unntak og estimert trykkplassering; det er fortsatt ikke en full norsk uttaleordbok eller en lydtest.
 
@@ -27,10 +27,17 @@ foreldremappa til datamappa. Bruk `--fasit /sti/til/tekster` (kan gjentas) for
 å velge arkiv eksplisitt i alle profiler. Manglende arkiv gir ingen gjenbrukssjekk
 mot tidligere låter; «ingen funn» er derfor ikke bevis på originalitet.
 
-Pre-refreng regnes som egen seksjon. Gjentatte refreng må ha samme antall
+Pre-refreng og post-refreng regnes som egne seksjonstyper, også `Pre-Hook`,
+`Post-Chorus` og navn med tankestrek. Gjentatte refreng må ha samme antall
 linjer og samme normaliserte hovedtekst; ad-libs, tegnsetting og store/små
 bokstaver sammenlignes fortsatt ikke. Låste linjer i omskrivingsprompten har
-strengere krav og skal sammenlignes ordrett.
+strengere krav og skal sammenlignes ordrett. Tomme refreng beholdes i rapporten
+og varsles av `--sjekk`, også når de bare inneholder ad-libs.
+
+Rapmerking krever ordet `rap`; `trap` og `drap` oppfyller ikke kravet.
+Den eksplisitt tillatte skrivemåten `HÅN` gir ikke bokstaveringsvarsel i
+Hoggorm-profilen. Andre ord med store bokstaver vurderes som før, også i egne
+ord. Dette sier ikke hvordan Suno faktisk vil uttale dem.
 
 ## Kommandoer
 
@@ -50,7 +57,9 @@ rim-bm kald --skrift
 
 `--batch` laster data én gang. `--json` beholder norske tegn og inneholder `metode`, `usikker` og tilgjengelige `varianter` i ordanalysene. Alle vurderinger merkes usikre i betydningen tekstbaserte anslag; det er ikke en kalibrert sannsynlighet. Metoden angir `uttalefil`, `heuristikk` eller `skrift`, ikke en ekstern kildebekreftelse.
 
-Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser første eksakte samsvar, ellers første grove skjeve samsvar. Et treff er mulig under den viste uttalen, ikke nødvendigvis i enhver setning. `--tekst` bruker første variant og gir beskjed ved ord med flere varianter; den kan ikke velge uttale ut fra musikalsk kontekst.
+Søkeresultater i JSON har `sokemodus`: `rim`, `skjevt` eller `assonans`, også i batch. `grupper` beholder stavelsesgrupper med ordlister. Assonanssøk har dessuten `assonans_score`, et objekt fra kandidatord til score mellom 0 og 1, bare for returnerte kandidater. Scoren er den beste blant variantene som oppfyller søkets stavelsesfilter; den er ikke en sannsynlighet eller et bevis på rent rim. Tomme assonanssøk gir tomme objekter for både `grupper` og `assonans_score`. Skriftmetoden framgår fortsatt av `ord.metode`.
+
+Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser første eksakte samsvar, ellers første grove skjeve samsvar. Et treff er mulig under den viste uttalen, ikke nødvendigvis i enhver setning. `--tekst` bruker første variant både i linjeanalysen og rimloggen, og gir beskjed ved ord med flere varianter; den kan ikke velge uttale ut fra musikalsk kontekst. JSON-rimpar angir `uttalevalg: "forste"` for tekstrapporten og `"alle"` for `--par`; `varianter` viser fortsatt alle tilgjengelige varianter.
 
 `--tekst` ignorerer seksjonsmerker og ad-libs i parentes i hovedtellinga. Den varsler om sifre. Rimskjemaet kan samle gjentatte ord og grove skjeve rim under samme bokstav; se parets type. Ingen musikalsk kvalitet er automatisk godkjent.
 
@@ -58,7 +67,13 @@ Vanlige søk og `--par` undersøker alle registrerte varianter. `--par` viser f�
 
 ## Låtsjekk
 
-`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, versmerker uten «rap», instrumenter i merkene, ad-libs mot favorittene, hook som avviker, vers to mot vers én, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Tidligere låter leses fra `artists/Hoggorm/studio/fornoyd` og `tekster`; bruk `--fasit DIR` eller `RIM_BM_FASIT` for andre mapper. Funnene er forslag, ikke dom.
+`rim-bm --tekst lat.txt --sjekk` kjører rapporten og en sjekkliste: gjenbruk fra tidligere låter, gjentatte ord i versene, versmerker uten «rap», instrumenter i merkene, ad-libs mot favorittene, hook som avviker, vers to mot første vers med hovedtekst, ekko mellom vers og hook, klisjeer og uttalevarsler for Suno. Bare Hoggorm leser standardarkivet `artists/Hoggorm/studio/fornoyd` og `tekster`, eller mapper valgt med `RIM_BM_FASIT`. Bruk `--fasit DIR` for eksplisitte mapper i alle profiler; flagget går foran miljøvariabelen. Funnene er forslag, ikke dom.
+
+En referanse hoppes bare over når hele den normaliserte hovedteksten er identisk i samme linjerekkefølge, uten hensyn til merker, ad-libs, tegnsetting eller store/små bokstaver. I Markdown behandles hver kodeblokk separat, så en stilprompt i en annen blokk ikke gjør låta ulik seg selv. Andre blokker i samme fil sammenlignes fortsatt. Delvis overlapp, også med en tidligere versjon av samme låt, gir gjenbruksfunn som må vurderes. Gjentatte kroklinjer i arkivet gjør ikke en annen låt til «samme låt».
+
+Ekkokontrollen av versslutten virker også når ett eller flere pre-refreng står før hooken. Den sammenligner mot starten av første refreng med mindre dette er tomt; da brukes refrenget som følger verset. Pre-refreng varsles når en normalisert linje siterer en hel linje fra det følgende refrenget. Delvis sitering, signaturbilder og tittelgjenbruk krever fortsatt manuell vurdering.
+
+`--profil` og `--fasit` krever `--sjekk`, som igjen krever `--tekst`. Ugyldige kombinasjoner og uleselige tekstfiler gir feilmelding og returkode 2 før indeksen lastes.
 
 ## Assonans
 
@@ -87,6 +102,8 @@ pepper p'epper
 
 En oppføring erstatter standardens varianter for det ordet. Apostrofen angir trykk før en vokalkjerne. Punktum skiller stavelser, men fjernes fra lydstrengen og rimnøkkelen. Uttalefilens verdier behandles som allerede omskrevne lydformer: de kjøres ikke gjennom de generelle uttalereglene igjen. `--info` viser telle- og trykkresultatet. Dette er verktøyets egen lydnotasjon, ikke IPA.
 
+Apostrof er bare et trykkmerke i lydformer fra uttalefilene. I CLI-ord og sangtekst behandles `ska'kke` og `ska’kke` som `skakke` under uttaleanalysen. Tekst og skrivemåte i rapporten bevares. `gjennom` har ferdig omskrevet standardlydform `j'ennom`.
+
 Standardfila har konkrete rettelser for protein, koffein, radio, mulighet, kjærlighet, fred, planet og komet. Min/din/sin har kort og lang variant. Finere har to trykkvarianter. Fra 2.2 dekker generelle regler i koden også resten av ordtypene: alle -het-ord (virkelighet, ærlighet, sikkerhet, ensomhet) og ord med -ie, -io og -eo (familie, historie, studio, video), med bøyningsformer. Ord med trykk på -i (parti, energien, geografien) beholder trykket på i. Bøyningsformer av andre unntak trenger eventuelt egne oppføringer.
 
 ## Cache og datastier
@@ -98,19 +115,24 @@ Data ligger relativt til skriptet. Følgende miljøvariabler kan overstyre:
 | RIM_BM_HOME | Mappe med ordliste, frekvens og brukeruttaler |
 | RIM_BM_WORDLIST | Egen ordliste |
 | RIM_BM_UTTALE | Egne uttaleoverstyringer |
+| RIM_BM_EGNE | Egne ord og valgfrie lydformer |
+| RIM_BM_FASIT | Kolonseparerte referansemapper, bare implisitt i Hoggorm-profilen |
 | RIM_BM_FREKVENS | Egen rangeringsliste |
 | RIM_BM_CACHE | Cachemappe, normalt `~/.cache/rim-bm` |
-| RIM_BM_BIN | Installasjonsmappe for kommandolenken |
 
-De leverte standarduttalene følger alltid skriptet. `--wordlist`, `--uttale` og `--frekvens` kan også overstyre stier. `--ingen-cache` hopper over cache. Indeksen avhenger av programversjon, datastien, filstørrelse og endringstid for ordliste og begge uttalefiler. Frekvenslista lastes separat. De tre sist brukte indeksene per modus beholdes, og eldre slettes. Hver endring i uttale.txt gir en ny indeks på cirka 15 MB, så uten opprydding vokser cachen for hver endring. Bruker du flere datasett om hverandre, holdes de tre sist brukte. Midlertidige cachefiler har unike navn og slettes etter en time hvis en prosess har stoppet underveis.
+De leverte standarduttalene følger alltid skriptet. Standard datamappe er skriptets mappe, også når ordlista mangler; ingen personlig reservesti brukes. `--wordlist`, `--uttale`, `--egne` og `--frekvens` kan også overstyre stier. `--ingen-cache` hopper over cache. Indeksen avhenger av programversjon, en SHA-256-hash av skriptet, absolutte datastier, filstørrelse og endringstid for ordliste, begge uttalefiler og egne ord. Kodeendringer gir derfor ny indeks uten at versjonsnummeret må endres. Frekvenslista lastes separat. De tre sist brukte indeksene per modus beholdes, og eldre slettes. Hver endring i uttale.txt gir en ny indeks på cirka 15 MB, så uten opprydding vokser cachen for hver endring. Bruker du flere datasett om hverandre, holdes de tre sist brukte. Midlertidige cachefiler har unike navn og slettes etter en time hvis en prosess har stoppet underveis.
 
 ## Tester
 
+Kjør fra prosjektroten:
+
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tester -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s dicts/tester -v
 ```
 
-92 tester. Fordelingen per versjon står i `ENDRINGER.md`. Testene gjelder standardpakken. En brukeruttale kan med vilje gi andre resultater; installerens standardtester bruker den tomme brukerfila fra distribusjonen.
+127 tester. Fordelingen per testfil står i `../AGENTS.md`. Testene gjelder standardpakken; kontrolltestene for 2.6, 2.6.1 og 2.6.2 bruker små, midlertidige datasett. Fullsuite-testene oppretter en egen midlertidig indekscache som slettes etter kjøring; de leser eller rydder ikke brukercachen. En brukeruttale kan med vilje gi andre resultater; standardpakken leveres med en tom brukerfil.
+
+`.github/workflows/tests.yml` kjører suiten med medfølgende ordliste på Python 3.10 og 3.14 ved push og pull request. Arbeidsflyten bruker [checkout](https://github.com/actions/checkout) og [setup-python](https://github.com/actions/setup-python). En lokal testkjøring er ikke en bekreftelse på at GitHub-kjøringen er gjennomført.
 
 ## Gjenværende begrensninger
 
@@ -119,6 +141,8 @@ Trykk, stumme konsonanter, vokallengde og lånord er fortsatt delvis heuristiske
 ## Data og kreditering
 
 Ordlista og frekvenslista er uendret fra den innsendte v2-pakken (600 400 ordformer). Kildefilene er beholdt:
+
+`uttale-v2.txt` er en historisk kopi som ikke leses av programmet. Lemma-, paradigme- og bøyingsfilene i `norsk-ordbank-bm/` er medfølgende kildedata; runtime bruker `former-utf8.txt`. Egne uttaleendringer skal legges i `uttale.txt`.
 
 - Norsk ordbank bokmål 2005, dump 2022-02-01, Nasjonalbiblioteket / Språkbanken / UiB. CC BY 4.0. https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-5/
 - FrequencyWords av Hermit Dave, OpenSubtitles 2018. CC BY-SA 4.0, som oppgitt i `frekvens/KILDE.md`.

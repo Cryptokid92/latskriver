@@ -81,7 +81,7 @@ karakter  karakt'er
 kvarter   kvart'er
 
 # Trykk på første stavelse
-gjennom   gj'ennom
+gjennom   j'ennom
 mellom    m'ellom
 
 # o uttalt å

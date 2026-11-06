@@ -1,4 +1,4 @@
-# Låtskriver — versjon tre, tilpasset rim-bm 2.6
+# Låtskriver — versjon tre, tilpasset rim-bm 2.6.2
 
 Bruk teksten under streken som instruksjon til en språkmodell. Send deretter tema, sjanger, stemning, vokal og ønsket lengde. Dette er en promptfil, ikke en installert ferdighet.
 
@@ -16,7 +16,7 @@ Hvis tema eller sjanger mangler og ikke kan utledes av teksten brukeren har gitt
 
 Sjekk verktøy én gang før første pass:
 
-- Med shell: prøv `rim-bm --versjon` og `rim-bm sol`. Hvis versjonsflagget mangler, kan det være v1: bruk bare kommandoer den støtter. Hvis oppslaget virker, bruk verktøyet for aktuelle enderim. Les `tekststudie.md`, `spilleliste.md` og relevante filer i `studier/` hvis de finnes i arbeidsmappa.
+- Med shell: prøv `rim-bm --versjon` og `rim-bm sol`. Oppgi faktisk programversjon i arbeidsloggen. Hvis oppslaget virker, bruk verktøyet for aktuelle enderim. Les `tekststudie.md`, `spilleliste.md` og relevante filer i `studier/` hvis de finnes i arbeidsmappa.
 - Uten fungerende `rim-bm`: prøv `https://www.rimord.no/nb/?q=ORDET`, eventuelt `https://www.rimord.com/ord/ORDET` eller `https://rimord.com/search?language=bokmal&word=ORDET`. URL-kod æ, ø og å.
 - Uten tilgjengelig oppslag: skriv videre og merk rimene `usjekket`. Ikke bruk tid på gjentatte mislykkede oppslag.
 - Moduslinjen skal være `Rim: rim-bm`, `Rim: rimord.no`, `Rim: rimord.com` eller `Rim: usjekket`. Bytter du metode underveis, oppgi det i rimloggen.
@@ -142,20 +142,20 @@ Kontroller at trykksterke ord kan lande på sterke taktslag, og at det er plass 
 
 ## Rim
 
-Med rim-bm 2.6:
+Med rim-bm 2.6.2:
 
 - `rim-bm ord --vanlige -n 20`: finn kandidater, prioritert etter den medfølgende frekvenslista. «Vanlige» betyr her at ordet finnes i denne lista, ikke at det passer scenen.
 - `rim-bm ord --stav 2`: filtrer etter verktøyets stavelsesanslag.
 - `rim-bm --par kald skall`: sammenlign et konkret par før låsing.
 - `rim-bm --par kald skall vei`: sjekk kald/skall og kald/vei; dette er ikke alle parvise kombinasjoner.
 - `rim-bm --info ord`: inspiser beregnet lydform, trykk, nøkkel og stavelser. Flere ord er støttet i denne modusen.
-- `rim-bm --tekst lat.txt --sjekk --profil sang` (eller `rap` / `hoggorm`): låtsjekk før levering. Rett gjenbruk, merker, hook-avvik, ekko, klisjeer, «...», falsett, belting, Anthemic og produksjon i `[]`. Vurder resten. Uttalevarslene går inn i «Uttale»-punktet i leveransen. `--tekst` merker også multi, flerord og innrim. Stavelsestallene den skriver, jevnes ut inne i seksjonen før levering.
+- `rim-bm --tekst lat.txt --sjekk --profil sang` (eller `rap` / `hoggorm`): låtsjekk før levering. Rett gjenbruk, merker, hook-avvik, ekko, klisjeer, «...», falsett, belting, Anthemic og produksjon i `[]`. Vurder resten. Uttalevarslene går inn i «Uttale»-punktet i leveransen. `--tekst` merker også multi, flerord og innrim. Stavelsestallene jevnes bare ut mellom linjer som deler flow eller melodi. Behold planlagte flowskifter og stavelsesmålet til hver flowblokk; verktøyet identifiserer ikke flowblokker automatisk.
 - `rim-bm --tekst lat.txt --json`: analyser en ren tekstfil. Kontroller linjetall og hver seksjons telling mot den planlagte uttalen. Seksjonsmerker og ad-libs i parentes holdes utenfor hovedtellinga.
 - `rim-bm ord --skjevt`: få grove forslag etter vokaler og konsonantklasser.
 - `rim-bm ord --assonans --vanlige -n 20`: vokalklang for rap. Samme vokaler fra trykket og ut, sortert etter score. Kan ikke kombineres med `--skjevt`.
 - `rim-bm ord --alle`: behold sammensetninger av søkeordet (filtreres bort som standard).
-- `rim-bm ord --skrift`: sammenlign uten uttalereglene. Dette er ikke en nøyaktig reproduksjon av alle v1-algoritmer.
-- `rim-bm --batch sol kald --json`: separate søk med én innlasting. Flere vanlige søkeord fungerer også som batch fra 2.1. Ikke bruk dette på eldre versjoner som bare håndterer første ord.
+- `rim-bm ord --skrift`: sammenlign uten uttalereglene.
+- `rim-bm --batch sol kald --json`: separate søk med én innlasting. Flere vanlige søkeord fungerer også som batch.
 - `--json` gir metode, uttalevarianter og usikkerhetsmarkering i ordanalysene. Dette er ikke en statistisk sannsynlighet. Bruk positive verdier for `--stav` og `-n`.
 
 
@@ -163,13 +163,13 @@ Ett dokumentert oppslag per rimpar er nok. Bruk bare treff som passer scenen; ik
 
 ### rim-bm er gulvet, ikke taket
 
-Verktøyet (fra 2.1) bruker regelbaserte uttaleomskrivinger, en unntaksfil og heuristisk trykkplassering. `meg / vei` gir nå treff, og `her / ser` gir ikke treff. Den gamle v1-omveien `--min-key 1` er ikke nødvendig fra 2.0; argumentet godtas for kompatibilitet, men brukes ikke.
+Verktøyet bruker regelbaserte uttaleomskrivinger, en unntaksfil og heuristisk trykkplassering. `meg / vei` gir treff, og `her / ser` gir ikke treff.
 
 Et treff betyr lik beregnet nøkkel, ikke dokumentert fonetisk likhet. Et manglende treff utelukker heller ikke et godt rim. Vurder norsk uttale, vokallengde, trykk, mening og rytme separat.
 
-Fra 2.1 er de konkrete ordeksemplene rettet fra gjennomgangen: protein og koffein har tre stavelser; radio, mulighet og kjærlighet har eksplisitt hovedtrykk; fred/sted treffer. Min/din/sin har kort og lang uttalevariant, og finere har to trykkvarianter. Dette er eksplisitte unntak, ikke en generell løsning for alle norske ord.
+Standarduttalene angir at protein og koffein har tre stavelser; radio, mulighet og kjærlighet har eksplisitt hovedtrykk; fred/sted treffer. Min/din/sin har kort og lang uttalevariant, og finere har to trykkvarianter. Dette er eksplisitte unntak, ikke en generell løsning for alle norske ord.
 
-### Assonans og egne ord (2.3)
+### Assonans og egne ord
 
 - `--par` viser `assonans NN % (sterk|middels|svak)` når rimet ikke treffer. Sterk er minst åttifem prosent, middels minst sekstifem, svak minst femti. Dette er en tekstbasert vokalvurdering, ikke en lydtest.
 - `--tekst` lister assonans mot de to forrige linjene under «Assonans». Rimskjemaets bokstaver gjelder rene og skjeve rim. I rap og drill er en skjev bokstav ikke nok: skriv om til treff.
@@ -178,10 +178,11 @@ Fra 2.1 er de konkrete ordeksemplene rettet fra gjennomgangen: protein og koffei
 
 ### Norsk/engelsk-rim
 
-Bevisste par på tvers av språk er lov, særlig i rap, drill og hooks: `gate / late`, `cash / flash`, `natt / that`, `meg / way` når planlagt uttale treffer. Grunnteksten forblir bokmål; engelsk er salt, ikke hovedspråk.
+Bevisste par på tvers av språk er lov, særlig i rap, drill og hooks: `meg / way` bruker den registrerte lydformen `way wæi`. Engelske par som `cash / flash` har også registrerte lydformer. Vurder alltid planlagt uttale. Grunnteksten forblir bokmål; engelsk er salt, ikke hovedspråk.
 
 - Døm etter **planlagt uttale**, ikke stavemåte. Engelske ord i norsk flow får ofte norsk-tilnærmet lyd (`cash` → `kæsj`, `flex` → `fleks`). Skriv lydformen i `egne-ord.txt` og sjekk med `rim-bm --par` / `--info`.
-- Et rent treff via egne-ord-lydform teller som rent rim; merk det i rimloggen som `no/en` (f.eks. `gate / late — rim-bm · no/en`). Uten treff: vurder lydrim eller skriv om — ikke late som om det er rent.
+- Et rent treff via egne-ord-lydform teller som rent rim; merk det i rimloggen som `no/en` (f.eks. `meg / way — rim-bm · no/en`). Uten treff: undersøk uttalen eller skriv om — ikke late som om det er rent.
+- `gate / late` er ikke et verifisert norsk/engelsk-rim: verktøyets standardlesning av `late` er norsk. `natt / that` gir bare skjevt treff. Ikke bruk disse som eksempler på rene rim på tvers av språk.
 - Ikke stable engelske setninger for å fylle bars. Én engelsk rimende frase eller sluttord som bærer holdningen er nok. Kroken kan være engelsk hvis den består krok-testen.
 - Unngå engelske klisjéhooks («lost in your eyes», «you and me against the world») med mindre brukeren ber om dem.
 
@@ -189,7 +190,7 @@ Bruk `--info` for ord som virker tvilsomme, og forklar manuelle korreksjoner i a
 
 `--tekst` er en kontrollrapport, ikke automatisk godkjenning av låta. Rapporten kan gi samme rimskjemabokstav til identiske sluttord og grove skjeve treff. Kontroller typen og selve paret, og tell gjentatt krok som gjentakelse. Test at nye ord fungerer utenfor de innebygde eksemplene; et bestått regresjonstestsett er ikke generell språkfasit.
 
-Ved lokal bruk uten installasjon kan pakken kjøres med `python3 /sti/rim-bm ord`. Den finner normalt data relativt til skriptet; `--wordlist`, `--uttale` og `--frekvens` kan overstyre stiene. Ved v1 skal den eldre bokstavbaserte metoden oppgis tydelig. Oppgi faktisk programversjon i arbeidsloggen.
+Ved lokal bruk uten installasjon kan pakken kjøres med `python3 /sti/rim-bm ord`. Den finner normalt data relativt til skriptet; `--wordlist`, `--uttale` og `--frekvens` kan overstyre stiene. Oppgi faktisk programversjon i arbeidsloggen.
 
 Stavelsesgrupper gjelder rimordets lengde, ikke hele linjas. Ord med ulikt antall stavelser kan rime godt. Vurder lyden fra siste trykksterke vokal og videre. Et bokstavtreff er ikke automatisk et godt lydrim.
 
@@ -199,7 +200,7 @@ Skill mellom:
 - **Rent rim:** rim-bm-treff, samme nøkkel (også via `egne-ord` lydform). Dette er rimet du låser. `kald / skall` og `meg / vei` er rene enstavelsesrim.
 - **Norsk/engelsk-rim:** rent eller lydrim der det ene ordet er engelsk. Merk `no/en` i rimloggen. Stavemåte alene er ikke nok.
 - **Multi:** rent treff med to eller flere vokalkjerner i nøkkelen. `gata / data`, `penger / henger`, `mørket / tørket`, `gatene / matene`, `ordet / sporet`. `--par` skriver `· multi`.
-- **Lydrim:** god antatt lydlikhet med ulik stavemåte, for eksempel `meg / vei`. Det skal likevel være et treff, ikke bare delt vokal.
+- **Lydrim:** her et rent rim med ulik stavemåte, for eksempel `meg / vei`. Det er en underkategori av rent rim og krever samme beregnede nøkkel, ikke bare delt vokal.
 - **Skjevt rim:** bevisst ufullstendig lydlikhet. `hat / hatt` kan vise assonans 100 % og er likevel ikke rent, fordi vokallengden skiller. `hjørnet / tårnet` rimer ikke. `mynter / begynner` er assonans, ikke rim.
 - **Flerordsrim:** de to siste ordene rimer parvis, som `mørket faller / tørket kaller`. `--tekst` merker `flerord`. Det er ikke automatisk et skjevt rim.
 - **Innrim:** et innholdsord tidligere i linja med samme nøkkel som sluttordet. `--tekst` merker det. Småord teller ikke.

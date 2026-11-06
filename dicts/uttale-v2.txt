@@ -1,3 +1,5 @@
+# HISTORISK KOPI: Denne fila leses ikke av rim-bm.
+# Bruk uttale.txt for egne endringer; uttale-standard.txt er aktiv standard.
 # uttale.txt — ord som uttales annerledes enn de staves
 #
 # Format: ord  lydform   (ett ord per linje, mellomrom eller tab mellom)
