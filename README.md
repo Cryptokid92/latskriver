@@ -15,3 +15,10 @@ python3 dicts/rim-bm --tekst lat.txt --sjekk --profil sang
 
 Profiler: `sang`, `rap`, `hoggorm` (standard). Private låter og referanser følger
 ikke med. Rim og stavelser er tekstbaserte anslag, ikke en lydtest.
+
+Testene kjøres fra prosjektroten med
+`python3 -m unittest discover -s dicts/tester -v`.
+[CI-oppsettet](.github/workflows/tests.yml) kjører samme suite på Python 3.10 og 3.14.
+
+Datakilder og deres lisenser står i [datadokumentasjonen](dicts/README.md#data-og-kreditering).
+Det er foreløpig ikke valgt en egen lisens for koden og promptene.
