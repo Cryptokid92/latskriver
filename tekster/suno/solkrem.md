@@ -1,0 +1,94 @@
+---
+title: "Solkrem"
+suno_ids: ["5d32066d-819f-490c-b2ae-d8e330b5b5d3", "3b0d9a3f-5c89-4a5f-818e-858176ad55bd", "fbea9397-8f17-44ed-a769-e44a2ad62651", "ab961173-4a79-47c2-831a-4312e731476b"]
+suno_urls: ["https://suno.com/song/5d32066d-819f-490c-b2ae-d8e330b5b5d3", "https://suno.com/song/3b0d9a3f-5c89-4a5f-818e-858176ad55bd", "https://suno.com/song/fbea9397-8f17-44ed-a769-e44a2ad62651", "https://suno.com/song/ab961173-4a79-47c2-831a-4312e731476b"]
+style: "Hot Daytime Afro Trap, Sweaty Midday Beach Heat Mood, 116 Bpm, A Major, Male Vocals, Whispered Intro And Outro, Cocky Low Rap Verses, Autotuned Sung Hook With Call And Response, Falsetto Bridge, Belted Final Hook, Bright Marimba Lead, Afro Percussion, Shaker Hats, Bouncy Short 808, Dry Upfront Vocals, Clear Norwegian Diction"
+created_at: "2026-11-04T19:51:18.395Z"
+clip_count_in_library: 4
+---
+
+[Intro - whispered, close]
+Gi meg flaska (shh)
+Ligg stille (mmm)
+
+[Hook - sung, autotune, call and response]
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Hun løsner på stroppen og legger seg på magen (ah)
+Jeg smører henne sakte, vi har hele dagen (dagen)
+
+[Verse 1 - rap, low register, cocky dirty flow]
+Badeplassen er full, det er trettito grader (shh)
+Hun ligger med et blad og later som hun blader (blader)
+Hun ser opp på meg og spør om jeg har tid (mmm)
+Jeg tar en klatt i hånda, lar fingrene gli (gli)
+Jeg starter helt oppe ved nakken (ah)
+Hun presser seg flatt ned mot bakken (bakken)
+Gutta på volleyballbanen stopper og glor (mmm)
+Hun er med meg, og det er mer enn de tror (tror)
+Glatt (ah)
+Glans (mmm)
+Hender på hud (shh)
+Ingen sjans (sjans)
+Hun hvisker at hun vil bort herfra, nå (ah)
+Jeg reiser meg først, og hun følger på (på)
+Bilen står varm, og setene brenner (mmm)
+Hun drar meg inn, og solkremen renner (renner)
+
+[Hook - sung, autotune, call and response]
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Hun løsner på stroppen og legger seg på magen (ah)
+Jeg smører henne sakte, vi har hele dagen (dagen)
+
+[Verse 2 - rap, faster flow, breathy]
+Vinduene dugger som om det var regn (ah)
+Hun tegner på glasset, et lite tegn (tegn)
+Det lukter kokos og varme seter (mmm)
+Hun vet hva jeg vil, hun vet hva jeg heter (heter)
+Kokos (ah)
+Glatt (mmm)
+Seter som klistrer (shh)
+Ikke natt (natt)
+Jeg tar det i mitt tempo, hun får det jeg gir (ah)
+Hun følger meg, uansett hva det blir (blir)
+Hun ler og sier at hun glemte å smøre forsiden (mmm)
+Jeg sier «neste gang», og jeg tar meg den tiden (tiden)
+Neste dag er flaska i hanskerommet tom (ah)
+Hun sender meg ett ord, og ordet er «kom» (kom)
+
+[Bridge - falsett, soft, fading vocals]
+Smør meg inn (ah)
+Sakte nå (mmm)
+La dem se (shh)
+La dem gå (gå)
+
+[Hook - sung, belting, harmonies]
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Solkrem, solkrem (ah)
+Hun rekker meg flaska (flaska)
+Solkrem, solkrem (mmm)
+Jeg holder maska (maska)
+Hun løsner på stroppen og legger seg på magen (ah)
+Jeg smører henne sakte, vi har hele dagen (dagen)
+
+[Outro - whispered]
+Solkrem (shh)
+Glemte forsiden (mmm)
+
+[End]
